@@ -1,5 +1,18 @@
 # GitHub, Render and Vercel
 
+## Project deployment
+
+- Frontend: https://phishing-url-detector-xi.vercel.app
+- Backend: https://linkguard-api-5m93.onrender.com
+- Health: https://linkguard-api-5m93.onrender.com/health
+- GitHub: https://github.com/5uhaeb/phishing-url-detector (private)
+
+The committed `frontend/vercel.json` forwards `/api/*` to this Render service.
+The Render frontend-origin allowlist includes the production frontend above.
+Render deploys are manual so documentation and frontend-only pushes do not
+retrain the backend. After backend changes, deploy the latest commit from
+Render and verify `/health` and a prediction from the Vercel frontend.
+
 The repository root is the Python backend. Set the Vercel project root to
 `frontend`, enable access to files outside that directory, and use the static
 output directory `dist`. The frontend has no runtime npm dependencies.
