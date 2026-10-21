@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+data/
+model.joblib
+evaluation.json
+dependencies.lock.txt
+external-evaluation.json
+.env
+.env.*
+!.env.example
+.vercel/
+node_modules/
+frontend/dist/
+test-results/
+playwright-report/

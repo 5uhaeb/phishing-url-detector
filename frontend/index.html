@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Check suspicious URLs using local machine learning, security rules, and public phishing reports. Your submitted links are never opened.">
+  <meta name="theme-color" content="#126b59">
+  <title>LinkGuard · Phishing URL Detection</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#checker">Skip to URL checker</a>
+  <main>
+    <header class="topbar"><div class="brand"><span class="brand-mark" aria-hidden="true">✓</span>LinkGuard</div><span class="tag">Think before you click</span></header>
+    <div class="eyebrow">Phishing URL Detection</div>
+    <h1>A little caution.<br>A safer next click.</h1>
+    <p class="intro">Unsure about a link? Check its warning signals and public phishing reports before you open it.</p>
+    <section class="card" id="checker" aria-labelledby="check-heading">
+      <h2 id="check-heading">Check a suspicious link</h2>
+      <form id="check-form">
+        <label for="url">URL to check</label>
+        <input type="url" id="url" name="url" required maxlength="4096" placeholder="https://example.com" inputmode="url" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="url-hint input-error">
+        <small id="url-hint">Paste the complete link, including http:// or https://.</small>
+        <label id="consent-row" class="consent" hidden><input type="checkbox" id="consent">I consent to sending this full URL to Google Web Risk for this check. The link may contain private information.</label>
+        <p id="input-error" class="error" role="alert" hidden></p>
+        <div class="actions"><button id="check-button" type="submit">Check URL</button><button class="secondary" id="clear-button" type="button">Clear</button></div>
+        <p id="status" class="hint" role="status" aria-live="polite">Connecting to the analysis service…</p>
+      </form>
+      <p class="privacy"><span aria-hidden="true">◈</span><span><strong>Your link stays unopened.</strong> Submitted URLs are not stored by the application. Public feed matching happens locally.</span></p>
+    </section>
+    <section id="result" class="card" aria-labelledby="result-heading" hidden tabindex="-1">
+      <div class="result-head"><h2 id="result-heading"></h2><span id="risk" class="risk"></span></div>
+      <p id="verification"></p><p id="action"></p><p id="analyzed-url" class="url muted"></p>
+      <table><caption class="hint">Analysis evidence and scores</caption><thead><tr><th scope="col">Measure</th><th scope="col">Result</th></tr></thead><tbody id="measures"></tbody></table>
+      <p id="feed-message" class="hint"></p><p id="reputation-message" class="hint" hidden></p>
+      <h2>Warning signals</h2><ul id="indicators"></ul>
+      <button id="download-button" class="secondary" type="button">Download this result (JSON)</button>
+      <details><summary>How to read your result</summary><p>A fresh exact URL match in a public phishing feed takes priority. Otherwise, the combined index uses 80% model score and 20% rule score. It is not a probability or a safety guarantee. Low predicted risk does not prove a link is safe.</p><p>The model was calibrated on historical data and may miss new attacks. Rules describe warning signals, not individual explanations of the model prediction.</p></details>
+      <details><summary>Extracted URL features</summary><table><thead><tr><th scope="col">Feature</th><th scope="col">Value</th></tr></thead><tbody id="features"></tbody></table></details>
+    </section>
+    <div class="steps" aria-label="How the check works">
+      <article><span class="step-number">01 / PASTE</span><h2>Start with the link</h2><p>No need to open the website or create an account.</p></article>
+      <article><span class="step-number">02 / ANALYZE</span><h2>Look beyond appearances</h2><p>We combine URL patterns, security rules, and public reports.</p></article>
+      <article><span class="step-number">03 / REVIEW</span><h2>Make an informed choice</h2><p>Read the evidence and keep a copy of your result.</p></article>
+    </div>
+    <details><summary>Public phishing feed status</summary><p id="feed-status">Feed status is loading.</p><p>Missing or expired feeds reduce coverage. An absent match does not establish safety.</p></details>
+    <footer class="footer">A second opinion for suspicious links. No tool catches every threat. Never share passwords or payment details with a site you do not trust.</footer>
+    <noscript>Enable JavaScript to use this frontend. The Flask backend also provides a form that works without JavaScript.</noscript>
+  </main>
+</body>
+</html>

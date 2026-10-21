@@ -1,0 +1,57 @@
+"""Verify the API boundary when frontend and backend use separate hosts."""
+import unittest
+from unittest.mock import patch
+
+import app as application
+
+
+class DeploymentTests(unittest.TestCase):
+    def setUp(self):
+        application.limiter.reset()
+        self.client = application.app.test_client()
+        self.origins = patch.object(application, 'frontend_origins', {'https://linkguard.vercel.app'})
+        self.origins.start()
+        self.addCleanup(self.origins.stop)
+
+    def test_deployed_frontend_can_submit_and_read_api_result(self):
+        headers = {'Origin': 'https://linkguard.vercel.app', 'Sec-Fetch-Site': 'cross-site'}
+        response = self.client.post('/api/predict', json={'url': 'https://example.com'}, headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('prediction', response.json)
+        self.assertEqual(response.headers['Access-Control-Allow-Origin'], headers['Origin'])
+        self.assertIn('Origin', response.headers['Vary'])
+
+    def test_preflight_allows_only_explicit_frontend_origin(self):
+        for origin, allowed in [('https://linkguard.vercel.app', True),
+                                ('https://attacker.vercel.app', False),
+                                ('https://linkguard.vercel.app.evil.example', False)]:
+            response = self.client.options('/api/predict', headers={
+                'Origin': origin, 'Access-Control-Request-Method': 'POST',
+                'Access-Control-Request-Headers': 'Content-Type'})
+            self.assertEqual('Access-Control-Allow-Origin' in response.headers, allowed)
+            if allowed:
+                self.assertIn('POST', response.headers['Access-Control-Allow-Methods'])
+                self.assertEqual(response.headers['Access-Control-Allow-Headers'], 'Content-Type')
+
+    def test_trusted_frontend_does_not_relax_html_form_protection(self):
+        response = self.client.post('/', data={'url': 'https://example.com'}, headers={
+            'Origin': 'https://linkguard.vercel.app', 'Sec-Fetch-Site': 'cross-site'})
+        self.assertEqual(response.status_code, 403)
+
+    def test_untrusted_frontend_still_cannot_submit(self):
+        response = self.client.post('/api/predict', json={'url': 'https://example.com'}, headers={
+            'Origin': 'https://attacker.vercel.app', 'Sec-Fetch-Site': 'cross-site'})
+        self.assertEqual(response.status_code, 403)
+        self.assertNotIn('Access-Control-Allow-Origin', response.headers)
+
+    def test_status_does_not_expose_credentials_and_handles_missing_model(self):
+        with patch.object(application, 'artifact', None):
+            response = self.client.get('/api/status')
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json['model_ready'])
+        self.assertIsInstance(response.json['reputation_configured'], bool)
+        self.assertEqual(set(response.json), {'model_ready', 'reputation_configured', 'public_feeds'})
+
+
+if __name__ == '__main__':
+    unittest.main()

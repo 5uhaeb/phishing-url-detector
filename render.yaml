@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: linkguard-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python train.py --download
+    startCommand: python app.py
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: HOST
+        value: 0.0.0.0
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: WEB_CONCURRENCY
+        value: 1

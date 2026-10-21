@@ -1,0 +1,63 @@
+{
+  "dataset": "UCI Phishing Websites 327, 11,055 rows / 30 precomputed website features",
+  "source": "https://archive.ics.uci.edu/dataset/327/phishing+websites",
+  "license": "CC BY 4.0",
+  "sha256": "514f582cb44cba17251baf1d59f64cddff16efa2b644d091ce8d2a1e8d492940",
+  "created_at": "2026-10-15T19:27:16.290652+00:00",
+  "paper_context": {
+    "title": "EnLeM",
+    "doi": "10.1186/s13635-025-00219-1",
+    "reported_accuracy": 0.9721,
+    "reported_f1": 0.9751
+  },
+  "comparison_status": "Not an exact reproduction or proof of superiority: fold indices, hyperparameters, and reported metric averaging differ.",
+  "deployment": "This offline model uses webpage features absent from a submitted URL. It is not loaded by app.py.",
+  "rows": 11055,
+  "unique_feature_vectors": 5785,
+  "experiments": {
+    "stratified_10fold": {
+      "accuracy": 0.9724106739032112,
+      "precision": 0.9737982257066227,
+      "recall": 0.9636586361780318,
+      "f1": 0.9687018984094408,
+      "false_positive_rate": 0.02062692869904174,
+      "missed_phishing_rate": 0.03634136382196815,
+      "confusion_matrix": [
+        [
+          6030,
+          127
+        ],
+        [
+          178,
+          4720
+        ]
+      ],
+      "weighted_f1": 0.9723953768914698,
+      "fold_mean_accuracy": 0.9724100545768453,
+      "fold_std_accuracy": 0.0025407006198721557,
+      "seconds": 13.6349844999786
+    },
+    "identical_feature_grouped_10fold": {
+      "accuracy": 0.9543193125282677,
+      "precision": 0.9436477479297112,
+      "recall": 0.953858717844018,
+      "f1": 0.9487257589603005,
+      "false_positive_rate": 0.04531427643332792,
+      "missed_phishing_rate": 0.04614128215598203,
+      "confusion_matrix": [
+        [
+          5878,
+          279
+        ],
+        [
+          226,
+          4672
+        ]
+      ],
+      "weighted_f1": 0.9543434914972835,
+      "fold_mean_accuracy": 0.954319395239769,
+      "fold_std_accuracy": 0.0115413076557214,
+      "seconds": 20.251611899991985
+    }
+  }
+}
