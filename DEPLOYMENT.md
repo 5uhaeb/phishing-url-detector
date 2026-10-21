@@ -92,6 +92,16 @@ clearing pending requests and safe rendering of untrusted URL text.
 Set `LINKGUARD_PYTHON` if the virtual environment lives elsewhere.
 The test preview server is local only and is not a production start command.
 
+To run those browser checks against the deployed frontend instead:
+
+```powershell
+$env:LINKGUARD_BASE_URL = 'https://phishing-url-detector-xi.vercel.app'
+npm test
+```
+
+This skips the local server and verifies predictions through Vercel's real
+proxy to Render. Wait until the Render health check reports ready first.
+
 ## Launch verification
 
 - Confirm Render `/health` is ready and `/api/status` matches the model and feeds.
