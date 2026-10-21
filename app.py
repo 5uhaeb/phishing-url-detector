@@ -36,8 +36,9 @@ analysis_limit = limiter.shared_limit('30 per minute;300 per hour', scope='url-a
 reputation_client = ReputationClient()
 feed_store = FeedStore()
 artifact = None
-if (ROOT / 'model.joblib').exists():
-    artifact = joblib.load(ROOT / 'model.joblib')
+model_path = Path(os.getenv('MODEL_PATH', str(ROOT / 'model.joblib')))
+if model_path.exists():
+    artifact = joblib.load(model_path, mmap_mode='r' if os.getenv('MODEL_MMAP') == '1' else None)
     if artifact.get('features') != list(FEATURE_NAMES):
         raise RuntimeError('Model feature schema changed. Run train.py again.')
 

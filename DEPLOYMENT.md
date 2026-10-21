@@ -12,6 +12,14 @@ The model and raw datasets stay outside Git. Training can take several minutes
 and needs substantially more memory than inference. Hosting capacity and
 build success still need verification on the actual account.
 
+The build also runs `prepare_runtime.py` and downloads the initial public feed
+snapshots. The runtime copy keeps the exact trained parameters and scores,
+omits evaluation-only domain hashes, and stores uncompressed arrays for
+memory-mapped loading. The full research artifact remains available for
+independent-domain evaluation. `MODEL_PATH=runtime-model.joblib` and
+`MODEL_MMAP=1` select this copy on Render. Resource limits still need a live
+startup check; local Windows memory figures do not establish Linux usage.
+
 Set `FRONTEND_ORIGINS` to the exact Vercel production origin, for example
 `https://linkguard-example.vercel.app`. Multiple explicitly trusted origins
 can be comma-separated. Never use a wildcard for preview deployments.

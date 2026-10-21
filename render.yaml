@@ -3,7 +3,7 @@ services:
     name: linkguard-api
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt && python train.py --download
+    buildCommand: pip install -r requirements.txt && python train.py --download && python prepare_runtime.py && python feeds.py
     startCommand: python app.py
     healthCheckPath: /health
     envVars:
@@ -11,6 +11,10 @@ services:
         value: 3.13.5
       - key: HOST
         value: 0.0.0.0
+      - key: MODEL_PATH
+        value: runtime-model.joblib
+      - key: MODEL_MMAP
+        value: "1"
       - key: FRONTEND_ORIGINS
         sync: false
       - key: WEB_CONCURRENCY

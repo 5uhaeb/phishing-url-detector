@@ -1,8 +1,14 @@
 """Verify the API boundary when frontend and backend use separate hosts."""
 import unittest
+import tempfile
+import gc
+from pathlib import Path
 from unittest.mock import patch
 
+import joblib
 import app as application
+from detector import analyze
+from prepare_runtime import prepare
 
 
 class DeploymentTests(unittest.TestCase):
@@ -51,6 +57,25 @@ class DeploymentTests(unittest.TestCase):
         self.assertFalse(response.json['model_ready'])
         self.assertIsInstance(response.json['reputation_configured'], bool)
         self.assertEqual(set(response.json), {'model_ready', 'reputation_configured', 'public_feeds'})
+
+    def test_runtime_artifact_preserves_scores_and_full_research_model(self):
+        source = application.ROOT / 'model.joblib'
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / 'runtime.joblib'
+            prepare(source, destination)
+            runtime = joblib.load(destination, mmap_mode='r')
+            self.assertNotIn('development_group_hashes', runtime)
+            self.assertIn('development_group_hashes', application.artifact)
+            for url in ['https://example.com', 'http://192.0.2.1/verify/account',
+                        'https://trusted.com@evil.example/login',
+                        'https://example.com/' + 'a' * 250]:
+                self.assertEqual(analyze(url, runtime), analyze(url, application.artifact))
+            del runtime
+            gc.collect()  # Release file mappings before Windows removes the fixture.
+
+    def test_runtime_packing_never_overwrites_research_model(self):
+        with self.assertRaises(ValueError):
+            prepare(application.ROOT / 'model.joblib', application.ROOT / 'model.joblib')
 
 
 if __name__ == '__main__':

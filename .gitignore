@@ -2,6 +2,7 @@
 __pycache__/
 data/
 model.joblib
+runtime-model.joblib
 evaluation.json
 dependencies.lock.txt
 external-evaluation.json
