@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import joblib
+import numpy as np
 import app as application
 from detector import analyze
 from prepare_runtime import prepare
@@ -70,6 +71,23 @@ class DeploymentTests(unittest.TestCase):
                         'https://trusted.com@evil.example/login',
                         'https://example.com/' + 'a' * 250]:
                 self.assertEqual(analyze(url, runtime), analyze(url, application.artifact))
+            model = runtime['model']
+            rng = np.random.default_rng(79)
+            splits = np.flatnonzero(model.features >= 0)
+            chosen = rng.choice(splits, size=512, replace=False)
+            probes = rng.uniform(0, 1000, (512, model.n_features_in_))
+            for row, node in enumerate(chosen):
+                probes[row, model.features[node]] = model.thresholds[node]
+            below, above = probes.copy(), probes.copy()
+            for row, node in enumerate(chosen):
+                feature = model.features[node]
+                below[row, feature] = np.nextafter(np.float32(model.thresholds[node]), np.float32(-np.inf))
+                above[row, feature] = np.nextafter(np.float32(model.thresholds[node]), np.float32(np.inf))
+            vectors = np.concatenate((probes, below, above))
+            np.testing.assert_allclose(model.predict_proba(vectors),
+                                       application.artifact['model'].predict_proba(vectors),
+                                       rtol=0, atol=1e-12)
+            del model
             del runtime
             gc.collect()  # Release file mappings before Windows removes the fixture.
 

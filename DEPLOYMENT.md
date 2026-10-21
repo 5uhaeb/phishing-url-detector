@@ -27,8 +27,12 @@ build success still need verification on the actual account.
 
 The build also runs `prepare_runtime.py` and downloads the initial public feed
 snapshots. The runtime copy keeps the exact trained parameters and scores,
-omits evaluation-only domain hashes, and stores uncompressed arrays for
-memory-mapped loading. The full research artifact remains available for
+omits evaluation-only domain hashes, and stores all tree splits and leaf
+probabilities in compact uncompressed arrays for memory-mapped inference.
+The serving process does not import scikit-learn or pandas. Input casting,
+tree averaging and sigmoid calibration match the research model; export
+checks score parity and fails the build on a mismatch. Tests also check split
+boundaries. The full research artifact remains available for
 independent-domain evaluation. `MODEL_PATH=runtime-model.joblib` and
 `MODEL_MMAP=1` select this copy on Render. Resource limits still need a live
 startup check; local Windows memory figures do not establish Linux usage.
