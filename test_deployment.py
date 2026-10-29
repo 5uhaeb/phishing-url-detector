@@ -10,6 +10,7 @@ import numpy as np
 import app as application
 from detector import analyze
 from prepare_runtime import prepare
+from runtime_model import CompactForest
 
 
 class DeploymentTests(unittest.TestCase):
@@ -72,6 +73,14 @@ class DeploymentTests(unittest.TestCase):
                         'https://example.com/' + 'a' * 250]:
                 self.assertEqual(analyze(url, runtime), analyze(url, application.artifact))
             model = runtime['model']
+            if not isinstance(model, CompactForest):
+                probes = np.random.default_rng(79).uniform(0, 1000, (512, len(runtime['features'])))
+                np.testing.assert_allclose(model.predict_proba(probes),
+                                           application.artifact['model'].predict_proba(probes), rtol=0, atol=1e-12)
+                del model
+                del runtime
+                gc.collect()
+                return
             rng = np.random.default_rng(79)
             splits = np.flatnonzero(model.features >= 0)
             chosen = rng.choice(splits, size=512, replace=False)
@@ -94,6 +103,23 @@ class DeploymentTests(unittest.TestCase):
     def test_runtime_packing_never_overwrites_research_model(self):
         with self.assertRaises(ValueError):
             prepare(application.ROOT / 'model.joblib', application.ROOT / 'model.joblib')
+
+    def test_model_comparison_matches_active_model_and_hides_stale_reports(self):
+        report = application.read_report('evaluation.json')
+        if not report.get('models'):
+            self.skipTest('Requires the three-model training run.')
+        response = self.client.get('/api/models')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(set(response.json['models']), {'random_forest', 'xgboost', 'lightgbm'})
+        self.assertEqual(response.json['model_version'], application.artifact['trained_at'])
+        with patch.object(application, 'read_report', return_value={'trained_at': 'old'}):
+            self.assertEqual(self.client.get('/api/models').status_code, 503)
+
+    def test_evaluation_does_not_publish_old_external_scores_as_current(self):
+        report = application.read_report('evaluation.json')
+        with patch.object(application, 'read_report', side_effect=[report, {'model_version': 'old'}, {}]):
+            response = self.client.get('/evaluation')
+        self.assertEqual(response.json['independent_domains'], {})
 
 
 if __name__ == '__main__':

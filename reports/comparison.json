@@ -1,0 +1,1321 @@
+{
+  "schema_version": 2,
+  "run_id": "20261029T154217299203Z",
+  "trained_at": "2026-10-29T15:42:17.299185+00:00",
+  "dataset": {
+    "name": "Multi-source raw URLs",
+    "sources": [
+      {
+        "name": "UCI PhiUSIIL",
+        "rows": 235795,
+        "source": "https://archive.ics.uci.edu/static/public/967/phiusiil+phishing+url+dataset.zip",
+        "license": "CC BY 4.0",
+        "sha256": "a236549cd369cd80bd478ff8e1779cbf44c58d5c3f79f7a51a1adbed7d06d1c6"
+      },
+      {
+        "name": "ealvaradob raw URLs",
+        "source": "https://huggingface.co/datasets/ealvaradob/phishing-dataset/resolve/main/urls.json",
+        "card": "https://huggingface.co/datasets/ealvaradob/phishing-dataset",
+        "license": "Apache-2.0 as declared by dataset publisher; underlying sources listed on dataset card",
+        "raw_rows": 835697,
+        "sampled_rows": 200000,
+        "inferred_https_schemes": 145652,
+        "sha256": "32cfba42892c915b041a3f0ca6ffd0f484b2590c4c2ca91b13d3ea1330b2c9bd"
+      }
+    ],
+    "raw_rows": 435795,
+    "usable_rows": 431701,
+    "invalid_sampled_urls": 1684,
+    "sample_limit": 0,
+    "ordered_url_label_sha256": "b41677b5073aa2f2125130a6c31ebd4d3250285ce76a84e3c7468a036423e856"
+  },
+  "methodology": {
+    "seed": 42,
+    "positive_class": "phishing (1)",
+    "source_labels": "UCI 0=phishing, 1=legitimate; supplementary 1=phishing, 0=legitimate",
+    "split": "60/10/10/20 approximately: train/calibrate/validation/test; disjoint registered domains",
+    "split_indices_sha256": "93bca1e0cadb74c871575e580b16b264b7ed3d15f02046074cfecdacc0526c99",
+    "calibration": "sigmoid on separate calibration domains",
+    "validation_fpr_target": 0.01,
+    "thresholds_selected_on": "validation only; exact empirical ROC points",
+    "model_selection": "validation hybrid recall, then precision, then average precision",
+    "policy_weights": [
+      1.0,
+      0.9,
+      0.8
+    ],
+    "candidates_per_family": 2,
+    "features": [
+      "url_length",
+      "hostname_length",
+      "path_length",
+      "query_length",
+      "subdomains",
+      "dots",
+      "hyphens",
+      "digits",
+      "digit_ratio",
+      "ats",
+      "percent_signs",
+      "question_marks",
+      "equals",
+      "slashes",
+      "keyword_count",
+      "https",
+      "ip_hostname",
+      "punycode",
+      "explicit_port",
+      "hostname_entropy",
+      "path_entropy",
+      "hostname_digit_ratio",
+      "longest_path_segment",
+      "opaque_path_token",
+      "encoded_destination",
+      "userinfo",
+      "brand_in_subdomain",
+      "hostname_keywords",
+      "path_keywords",
+      "known_suffix",
+      "path_depth",
+      "query_parameters"
+    ],
+    "confusion_matrix_order": [
+      "legitimate",
+      "phishing"
+    ],
+    "test_usage": "Historical regression split; not a new independent prospective benchmark"
+  },
+  "splits": {
+    "training": {
+      "rows": 256894,
+      "phishing": 115760,
+      "legitimate": 141134,
+      "domains": 181230
+    },
+    "calibration": {
+      "rows": 45850,
+      "phishing": 19135,
+      "legitimate": 26715,
+      "domains": 30205
+    },
+    "validation": {
+      "rows": 41981,
+      "phishing": 18469,
+      "legitimate": 23512,
+      "domains": 30205
+    },
+    "test": {
+      "rows": 86976,
+      "phishing": 37847,
+      "legitimate": 49129,
+      "domains": 60410
+    }
+  },
+  "source_audit": [
+    {
+      "source": "UCI PhiUSIIL",
+      "label": "legitimate",
+      "rows": 134849,
+      "non_root_path_fraction": 0.0
+    },
+    {
+      "source": "UCI PhiUSIIL",
+      "label": "phishing",
+      "rows": 99830,
+      "non_root_path_fraction": 0.2714715015526395
+    },
+    {
+      "source": "ealvaradob raw URLs",
+      "label": "legitimate",
+      "rows": 105641,
+      "non_root_path_fraction": 0.8759572514459348
+    },
+    {
+      "source": "ealvaradob raw URLs",
+      "label": "phishing",
+      "rows": 91381,
+      "non_root_path_fraction": 0.4572941858810913
+    }
+  ],
+  "environment": {
+    "python": "3.13.0",
+    "sklearn": "1.9.1",
+    "xgboost": "3.4.1",
+    "lightgbm": "4.7.0",
+    "numpy": "2.5.4",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "previous_baseline": {
+    "trained_at": "2026-10-16T03:59:27.110146+00:00",
+    "test_results": {
+      "rules": {
+        "accuracy": 0.5886336460632818,
+        "precision": 0.9210097719869706,
+        "recall": 0.05976695642983592,
+        "f1": 0.11224970845842741,
+        "false_positive_rate": 0.003948787884955932,
+        "missed_phishing_rate": 0.9402330435701641,
+        "confusion_matrix": [
+          [
+            48935,
+            194
+          ],
+          [
+            35585,
+            2262
+          ]
+        ]
+      },
+      "random_forest": {
+        "accuracy": 0.8400593267108167,
+        "precision": 0.9823472513300016,
+        "recall": 0.6440140565962956,
+        "f1": 0.7779887965016997,
+        "false_positive_rate": 0.008915304606240713,
+        "missed_phishing_rate": 0.3559859434037044,
+        "confusion_matrix": [
+          [
+            48691,
+            438
+          ],
+          [
+            13473,
+            24374
+          ]
+        ]
+      },
+      "hybrid": {
+        "accuracy": 0.8447042862398823,
+        "precision": 0.9825535289452815,
+        "recall": 0.65474145903242,
+        "f1": 0.7858309416969255,
+        "false_positive_rate": 0.008956013759693867,
+        "missed_phishing_rate": 0.34525854096758,
+        "confusion_matrix": [
+          [
+            48689,
+            440
+          ],
+          [
+            13067,
+            24780
+          ]
+        ]
+      }
+    },
+    "dataset": {
+      "name": "Multi-source raw URLs",
+      "sources": [
+        {
+          "name": "UCI PhiUSIIL",
+          "rows": 235795,
+          "source": "https://archive.ics.uci.edu/static/public/967/phiusiil+phishing+url+dataset.zip",
+          "license": "CC BY 4.0",
+          "sha256": "a236549cd369cd80bd478ff8e1779cbf44c58d5c3f79f7a51a1adbed7d06d1c6"
+        },
+        {
+          "name": "ealvaradob raw URLs",
+          "source": "https://huggingface.co/datasets/ealvaradob/phishing-dataset/resolve/main/urls.json",
+          "card": "https://huggingface.co/datasets/ealvaradob/phishing-dataset",
+          "license": "Apache-2.0 as declared by dataset publisher; underlying sources listed on dataset card",
+          "raw_rows": 835697,
+          "sampled_rows": 200000,
+          "inferred_https_schemes": 145652,
+          "sha256": "32cfba42892c915b041a3f0ca6ffd0f484b2590c4c2ca91b13d3ea1330b2c9bd"
+        }
+      ],
+      "source": "https://archive.ics.uci.edu/static/public/967/phiusiil+phishing+url+dataset.zip",
+      "license": "See individual dataset sources",
+      "authors": "Arvind Prasad and Shalini Chandra (2024)",
+      "sha256": "a236549cd369cd80bd478ff8e1779cbf44c58d5c3f79f7a51a1adbed7d06d1c6",
+      "raw_rows": 435795,
+      "sample_limit": 0,
+      "invalid_sampled_urls": 1684,
+      "usable_rows": 431701
+    },
+    "methodology": {
+      "seed": 42,
+      "positive_class": "phishing (1)",
+      "source_labels": "UCI 0=phishing, 1=legitimate; inverted internally",
+      "split": "60/10/10/20 approximately: train/calibrate/threshold/test; disjoint domain groups",
+      "thresholds_selected_on": "Maximize validation recall subject to validation false-positive-rate target",
+      "validation_fpr_target": 0.01,
+      "calibration": "sigmoid on disjoint calibration domains",
+      "hybrid_formula": "0.8 * Random Forest score + 0.2 * rule score",
+      "feature_normalization": "Ignore conventional leading www in lexical feature measurements",
+      "features": [
+        "url_length",
+        "hostname_length",
+        "path_length",
+        "query_length",
+        "subdomains",
+        "dots",
+        "hyphens",
+        "digits",
+        "digit_ratio",
+        "ats",
+        "percent_signs",
+        "question_marks",
+        "equals",
+        "slashes",
+        "keyword_count",
+        "https",
+        "ip_hostname",
+        "punycode",
+        "explicit_port",
+        "hostname_entropy",
+        "path_entropy",
+        "hostname_digit_ratio",
+        "longest_path_segment",
+        "opaque_path_token",
+        "encoded_destination",
+        "userinfo",
+        "brand_in_subdomain",
+        "hostname_keywords",
+        "path_keywords",
+        "known_suffix",
+        "path_depth",
+        "query_parameters"
+      ],
+      "confusion_matrix_order": [
+        "legitimate",
+        "phishing"
+      ]
+    }
+  },
+  "models": {
+    "random_forest": {
+      "candidate": 1,
+      "parameters": {
+        "bootstrap": true,
+        "ccp_alpha": 0.0,
+        "class_weight": "balanced",
+        "criterion": "gini",
+        "max_depth": 24,
+        "max_features": "sqrt",
+        "max_leaf_nodes": null,
+        "max_samples": null,
+        "min_impurity_decrease": 0.0,
+        "min_samples_leaf": 2,
+        "min_samples_split": 2,
+        "min_weight_fraction_leaf": 0.0,
+        "monotonic_cst": null,
+        "n_estimators": 240,
+        "n_jobs": 4,
+        "oob_score": false,
+        "random_state": 42,
+        "verbose": 0,
+        "warm_start": false
+      },
+      "model_weight": 0.8,
+      "thresholds": {
+        "model": 0.912474018888511,
+        "hybrid": 0.7374883486497344,
+        "rules": 0.3
+      },
+      "validation_results": {
+        "hybrid": {
+          "accuracy": 0.8373311736261643,
+          "precision": 0.9806739345887017,
+          "recall": 0.6429151551248037,
+          "f1": 0.7766621970762337,
+          "false_positive_rate": 0.009952364749914937,
+          "missed_phishing_rate": 0.35708484487519626,
+          "confusion_matrix": [
+            [
+              23278,
+              234
+            ],
+            [
+              6595,
+              11874
+            ]
+          ]
+        },
+        "model": {
+          "accuracy": 0.8360210571448989,
+          "precision": 0.9805060141020323,
+          "recall": 0.639991336834696,
+          "f1": 0.7744725461931595,
+          "false_positive_rate": 0.009994896223205171,
+          "missed_phishing_rate": 0.360008663165304,
+          "confusion_matrix": [
+            [
+              23277,
+              235
+            ],
+            [
+              6649,
+              11820
+            ]
+          ]
+        }
+      },
+      "validation_probability": {
+        "roc_auc": 0.9334033986140593,
+        "average_precision": 0.9368223914749494,
+        "brier_score": 0.09025944111326817
+      },
+      "training_and_calibration_seconds": 27.512964299879968,
+      "trials": [
+        {
+          "candidate": 1,
+          "parameters": {
+            "bootstrap": true,
+            "ccp_alpha": 0.0,
+            "class_weight": "balanced",
+            "criterion": "gini",
+            "max_depth": 24,
+            "max_features": "sqrt",
+            "max_leaf_nodes": null,
+            "max_samples": null,
+            "min_impurity_decrease": 0.0,
+            "min_samples_leaf": 2,
+            "min_samples_split": 2,
+            "min_weight_fraction_leaf": 0.0,
+            "monotonic_cst": null,
+            "n_estimators": 240,
+            "n_jobs": 4,
+            "oob_score": false,
+            "random_state": 42,
+            "verbose": 0,
+            "warm_start": false
+          },
+          "model_weight": 0.8,
+          "thresholds": {
+            "model": 0.912474018888511,
+            "hybrid": 0.7374883486497344,
+            "rules": 0.3
+          },
+          "validation_results": {
+            "hybrid": {
+              "accuracy": 0.8373311736261643,
+              "precision": 0.9806739345887017,
+              "recall": 0.6429151551248037,
+              "f1": 0.7766621970762337,
+              "false_positive_rate": 0.009952364749914937,
+              "missed_phishing_rate": 0.35708484487519626,
+              "confusion_matrix": [
+                [
+                  23278,
+                  234
+                ],
+                [
+                  6595,
+                  11874
+                ]
+              ]
+            },
+            "model": {
+              "accuracy": 0.8360210571448989,
+              "precision": 0.9805060141020323,
+              "recall": 0.639991336834696,
+              "f1": 0.7744725461931595,
+              "false_positive_rate": 0.009994896223205171,
+              "missed_phishing_rate": 0.360008663165304,
+              "confusion_matrix": [
+                [
+                  23277,
+                  235
+                ],
+                [
+                  6649,
+                  11820
+                ]
+              ]
+            }
+          },
+          "validation_probability": {
+            "roc_auc": 0.9334033986140593,
+            "average_precision": 0.9368223914749494,
+            "brier_score": 0.09025944111326817
+          },
+          "training_and_calibration_seconds": 27.512964299879968
+        },
+        {
+          "candidate": 2,
+          "parameters": {
+            "bootstrap": true,
+            "ccp_alpha": 0.0,
+            "class_weight": "balanced",
+            "criterion": "gini",
+            "max_depth": 32,
+            "max_features": 0.8,
+            "max_leaf_nodes": null,
+            "max_samples": null,
+            "min_impurity_decrease": 0.0,
+            "min_samples_leaf": 1,
+            "min_samples_split": 2,
+            "min_weight_fraction_leaf": 0.0,
+            "monotonic_cst": null,
+            "n_estimators": 480,
+            "n_jobs": 4,
+            "oob_score": false,
+            "random_state": 42,
+            "verbose": 0,
+            "warm_start": false
+          },
+          "model_weight": 0.8,
+          "thresholds": {
+            "model": 0.9179359477685797,
+            "hybrid": 0.7389952826257086,
+            "rules": 0.3
+          },
+          "validation_results": {
+            "hybrid": {
+              "accuracy": 0.8248731569043138,
+              "precision": 0.9797186502114439,
+              "recall": 0.6146515783204288,
+              "f1": 0.7553899387809423,
+              "false_positive_rate": 0.009994896223205171,
+              "missed_phishing_rate": 0.3853484216795712,
+              "confusion_matrix": [
+                [
+                  23277,
+                  235
+                ],
+                [
+                  7117,
+                  11352
+                ]
+              ]
+            },
+            "model": {
+              "accuracy": 0.8175126843095686,
+              "precision": 0.979162972158184,
+              "recall": 0.5979208403270345,
+              "f1": 0.7424614246814805,
+              "false_positive_rate": 0.009994896223205171,
+              "missed_phishing_rate": 0.40207915967296554,
+              "confusion_matrix": [
+                [
+                  23277,
+                  235
+                ],
+                [
+                  7426,
+                  11043
+                ]
+              ]
+            }
+          },
+          "validation_probability": {
+            "roc_auc": 0.926513194009601,
+            "average_precision": 0.9290631349565033,
+            "brier_score": 0.09489620737034318
+          },
+          "training_and_calibration_seconds": 165.89589900011197
+        }
+      ],
+      "batch_model_ms_per_url": 0.027207673379082836,
+      "test_results": {
+        "model": {
+          "accuracy": 0.8455780905077263,
+          "precision": 0.9808192201654194,
+          "recall": 0.6579913863714429,
+          "f1": 0.7876085203282888,
+          "false_positive_rate": 0.009912678865842985,
+          "missed_phishing_rate": 0.3420086136285571,
+          "confusion_matrix": [
+            [
+              48642,
+              487
+            ],
+            [
+              12944,
+              24903
+            ]
+          ]
+        },
+        "hybrid": {
+          "accuracy": 0.8466243561442237,
+          "precision": 0.9816816698769606,
+          "recall": 0.6598409385156023,
+          "f1": 0.7892108839237746,
+          "false_positive_rate": 0.009485232754584868,
+          "missed_phishing_rate": 0.34015906148439773,
+          "confusion_matrix": [
+            [
+              48663,
+              466
+            ],
+            [
+              12874,
+              24973
+            ]
+          ]
+        },
+        "default_05": {
+          "accuracy": 0.8709873988226637,
+          "precision": 0.8700522570602623,
+          "recall": 0.8270404523476101,
+          "f1": 0.848001300407732,
+          "false_positive_rate": 0.09515764619674734,
+          "missed_phishing_rate": 0.17295954765238988,
+          "confusion_matrix": [
+            [
+              44454,
+              4675
+            ],
+            [
+              6546,
+              31301
+            ]
+          ]
+        },
+        "rules": {
+          "accuracy": 0.5886336460632818,
+          "precision": 0.9210097719869706,
+          "recall": 0.05976695642983592,
+          "f1": 0.11224970845842741,
+          "false_positive_rate": 0.003948787884955932,
+          "missed_phishing_rate": 0.9402330435701641,
+          "confusion_matrix": [
+            [
+              48935,
+              194
+            ],
+            [
+              35585,
+              2262
+            ]
+          ]
+        }
+      },
+      "probabilistic_metrics": {
+        "roc_auc": 0.9274749062588435,
+        "average_precision": 0.9316025302687845,
+        "brier_score": 0.09551068712577965
+      },
+      "single_url_analysis_median_ms": 16.361149959266186,
+      "single_url_analysis_p95_ms": 18.911105045117438
+    },
+    "xgboost": {
+      "candidate": 2,
+      "parameters": {
+        "objective": "binary:logistic",
+        "base_score": null,
+        "booster": null,
+        "callbacks": null,
+        "colsample_bylevel": null,
+        "colsample_bynode": null,
+        "colsample_bytree": 0.9,
+        "device": null,
+        "early_stopping_rounds": null,
+        "enable_categorical": true,
+        "eval_metric": "logloss",
+        "feature_types": null,
+        "feature_weights": null,
+        "gamma": null,
+        "grow_policy": null,
+        "importance_type": null,
+        "interaction_constraints": null,
+        "learning_rate": 0.05,
+        "max_bin": null,
+        "max_cat_threshold": null,
+        "max_cat_to_onehot": null,
+        "max_delta_step": null,
+        "max_depth": 8,
+        "max_leaves": null,
+        "min_child_weight": 3,
+        "missing": "nan",
+        "monotone_constraints": null,
+        "multi_strategy": null,
+        "n_estimators": 900,
+        "n_jobs": 4,
+        "num_parallel_tree": null,
+        "random_state": 42,
+        "reg_alpha": null,
+        "reg_lambda": 5,
+        "sampling_method": null,
+        "scale_pos_weight": null,
+        "subsample": 0.9,
+        "tree_method": "hist",
+        "validate_parameters": null,
+        "verbosity": null
+      },
+      "model_weight": 0.9,
+      "thresholds": {
+        "model": 0.9315155534275944,
+        "hybrid": 0.8407650642509457,
+        "rules": 0.3
+      },
+      "validation_results": {
+        "hybrid": {
+          "accuracy": 0.8401896095852885,
+          "precision": 0.9807849550286182,
+          "recall": 0.6494666738859711,
+          "f1": 0.7814586794358123,
+          "false_positive_rate": 0.009994896223205171,
+          "missed_phishing_rate": 0.35053332611402893,
+          "confusion_matrix": [
+            [
+              23277,
+              235
+            ],
+            [
+              6474,
+              11995
+            ]
+          ]
+        },
+        "model": {
+          "accuracy": 0.8399990471880137,
+          "precision": 0.9810085134250164,
+          "recall": 0.6488710812713195,
+          "f1": 0.7810982564771061,
+          "false_positive_rate": 0.009867301803334467,
+          "missed_phishing_rate": 0.3511289187286805,
+          "confusion_matrix": [
+            [
+              23280,
+              232
+            ],
+            [
+              6485,
+              11984
+            ]
+          ]
+        }
+      },
+      "validation_probability": {
+        "roc_auc": 0.9378109064744945,
+        "average_precision": 0.9408620266279994,
+        "brier_score": 0.08838953166165292
+      },
+      "training_and_calibration_seconds": 13.900914799887687,
+      "trials": [
+        {
+          "candidate": 1,
+          "parameters": {
+            "objective": "binary:logistic",
+            "base_score": null,
+            "booster": null,
+            "callbacks": null,
+            "colsample_bylevel": null,
+            "colsample_bynode": null,
+            "colsample_bytree": 0.9,
+            "device": null,
+            "early_stopping_rounds": null,
+            "enable_categorical": true,
+            "eval_metric": "logloss",
+            "feature_types": null,
+            "feature_weights": null,
+            "gamma": null,
+            "grow_policy": null,
+            "importance_type": null,
+            "interaction_constraints": null,
+            "learning_rate": 0.05,
+            "max_bin": null,
+            "max_cat_threshold": null,
+            "max_cat_to_onehot": null,
+            "max_delta_step": null,
+            "max_depth": 6,
+            "max_leaves": null,
+            "min_child_weight": 3,
+            "missing": "nan",
+            "monotone_constraints": null,
+            "multi_strategy": null,
+            "n_estimators": 600,
+            "n_jobs": 4,
+            "num_parallel_tree": null,
+            "random_state": 42,
+            "reg_alpha": null,
+            "reg_lambda": 5,
+            "sampling_method": null,
+            "scale_pos_weight": null,
+            "subsample": 0.9,
+            "tree_method": "hist",
+            "validate_parameters": null,
+            "verbosity": null
+          },
+          "model_weight": 1.0,
+          "thresholds": {
+            "model": 0.9249995210057507,
+            "hybrid": 0.9249995210057507,
+            "rules": 0.3
+          },
+          "validation_results": {
+            "hybrid": {
+              "accuracy": 0.8386651104070889,
+              "precision": 0.9806838730889363,
+              "recall": 0.6460014077643619,
+              "f1": 0.7789130079973886,
+              "false_positive_rate": 0.009994896223205171,
+              "missed_phishing_rate": 0.3539985922356381,
+              "confusion_matrix": [
+                [
+                  23277,
+                  235
+                ],
+                [
+                  6538,
+                  11931
+                ]
+              ]
+            },
+            "model": {
+              "accuracy": 0.8386651104070889,
+              "precision": 0.9806838730889363,
+              "recall": 0.6460014077643619,
+              "f1": 0.7789130079973886,
+              "false_positive_rate": 0.009994896223205171,
+              "missed_phishing_rate": 0.3539985922356381,
+              "confusion_matrix": [
+                [
+                  23277,
+                  235
+                ],
+                [
+                  6538,
+                  11931
+                ]
+              ]
+            }
+          },
+          "validation_probability": {
+            "roc_auc": 0.9357060660266798,
+            "average_precision": 0.9388814308089904,
+            "brier_score": 0.0897116660228681
+          },
+          "training_and_calibration_seconds": 8.136550400173292
+        },
+        {
+          "candidate": 2,
+          "parameters": {
+            "objective": "binary:logistic",
+            "base_score": null,
+            "booster": null,
+            "callbacks": null,
+            "colsample_bylevel": null,
+            "colsample_bynode": null,
+            "colsample_bytree": 0.9,
+            "device": null,
+            "early_stopping_rounds": null,
+            "enable_categorical": true,
+            "eval_metric": "logloss",
+            "feature_types": null,
+            "feature_weights": null,
+            "gamma": null,
+            "grow_policy": null,
+            "importance_type": null,
+            "interaction_constraints": null,
+            "learning_rate": 0.05,
+            "max_bin": null,
+            "max_cat_threshold": null,
+            "max_cat_to_onehot": null,
+            "max_delta_step": null,
+            "max_depth": 8,
+            "max_leaves": null,
+            "min_child_weight": 3,
+            "missing": "nan",
+            "monotone_constraints": null,
+            "multi_strategy": null,
+            "n_estimators": 900,
+            "n_jobs": 4,
+            "num_parallel_tree": null,
+            "random_state": 42,
+            "reg_alpha": null,
+            "reg_lambda": 5,
+            "sampling_method": null,
+            "scale_pos_weight": null,
+            "subsample": 0.9,
+            "tree_method": "hist",
+            "validate_parameters": null,
+            "verbosity": null
+          },
+          "model_weight": 0.9,
+          "thresholds": {
+            "model": 0.9315155534275944,
+            "hybrid": 0.8407650642509457,
+            "rules": 0.3
+          },
+          "validation_results": {
+            "hybrid": {
+              "accuracy": 0.8401896095852885,
+              "precision": 0.9807849550286182,
+              "recall": 0.6494666738859711,
+              "f1": 0.7814586794358123,
+              "false_positive_rate": 0.009994896223205171,
+              "missed_phishing_rate": 0.35053332611402893,
+              "confusion_matrix": [
+                [
+                  23277,
+                  235
+                ],
+                [
+                  6474,
+                  11995
+                ]
+              ]
+            },
+            "model": {
+              "accuracy": 0.8399990471880137,
+              "precision": 0.9810085134250164,
+              "recall": 0.6488710812713195,
+              "f1": 0.7810982564771061,
+              "false_positive_rate": 0.009867301803334467,
+              "missed_phishing_rate": 0.3511289187286805,
+              "confusion_matrix": [
+                [
+                  23280,
+                  232
+                ],
+                [
+                  6485,
+                  11984
+                ]
+              ]
+            }
+          },
+          "validation_probability": {
+            "roc_auc": 0.9378109064744945,
+            "average_precision": 0.9408620266279994,
+            "brier_score": 0.08838953166165292
+          },
+          "training_and_calibration_seconds": 13.900914799887687
+        }
+      ],
+      "batch_model_ms_per_url": 0.016873181107809672,
+      "test_results": {
+        "model": {
+          "accuracy": 0.8497401582045622,
+          "precision": 0.98224990268587,
+          "recall": 0.666737125795968,
+          "f1": 0.7943088279270346,
+          "false_positive_rate": 0.009281686987319099,
+          "missed_phishing_rate": 0.333262874204032,
+          "confusion_matrix": [
+            [
+              48673,
+              456
+            ],
+            [
+              12613,
+              25234
+            ]
+          ]
+        },
+        "hybrid": {
+          "accuracy": 0.8498436350257542,
+          "precision": 0.9819935441216505,
+          "recall": 0.6671598805717759,
+          "f1": 0.7945248584015104,
+          "false_positive_rate": 0.009424169024405137,
+          "missed_phishing_rate": 0.33284011942822417,
+          "confusion_matrix": [
+            [
+              48666,
+              463
+            ],
+            [
+              12597,
+              25250
+            ]
+          ]
+        },
+        "default_05": {
+          "accuracy": 0.8752414459161147,
+          "precision": 0.8812348189572389,
+          "recall": 0.824398234998811,
+          "f1": 0.8518695480048599,
+          "false_positive_rate": 0.08559099513525616,
+          "missed_phishing_rate": 0.175601765001189,
+          "confusion_matrix": [
+            [
+              44924,
+              4205
+            ],
+            [
+              6646,
+              31201
+            ]
+          ]
+        },
+        "rules": {
+          "accuracy": 0.5886336460632818,
+          "precision": 0.9210097719869706,
+          "recall": 0.05976695642983592,
+          "f1": 0.11224970845842741,
+          "false_positive_rate": 0.003948787884955932,
+          "missed_phishing_rate": 0.9402330435701641,
+          "confusion_matrix": [
+            [
+              48935,
+              194
+            ],
+            [
+              35585,
+              2262
+            ]
+          ]
+        }
+      },
+      "probabilistic_metrics": {
+        "roc_auc": 0.931700525153619,
+        "average_precision": 0.9350910479549663,
+        "brier_score": 0.0954798196276672
+      },
+      "single_url_analysis_median_ms": 1.5303000109270215,
+      "single_url_analysis_p95_ms": 1.9272650009952486
+    },
+    "lightgbm": {
+      "candidate": 1,
+      "parameters": {
+        "boosting_type": "gbdt",
+        "class_weight": null,
+        "colsample_bytree": 0.9,
+        "importance_type": "split",
+        "learning_rate": 0.04,
+        "max_depth": -1,
+        "min_child_samples": 30,
+        "min_child_weight": 0.001,
+        "min_split_gain": 0.0,
+        "n_estimators": 800,
+        "n_jobs": 4,
+        "num_leaves": 31,
+        "objective": "binary",
+        "random_state": 42,
+        "reg_alpha": 0.0,
+        "reg_lambda": 3,
+        "subsample": 0.9,
+        "subsample_for_bin": 200000,
+        "subsample_freq": 1,
+        "verbosity": -1,
+        "deterministic": true,
+        "force_col_wise": true
+      },
+      "model_weight": 0.9,
+      "thresholds": {
+        "model": 0.8801166609176259,
+        "hybrid": 0.7955506433031081,
+        "rules": 0.3
+      },
+      "validation_results": {
+        "hybrid": {
+          "accuracy": 0.8384745480098139,
+          "precision": 0.9809084924292297,
+          "recall": 0.6454058151497103,
+          "f1": 0.7785506678423304,
+          "false_positive_rate": 0.009867301803334467,
+          "missed_phishing_rate": 0.35459418485028965,
+          "confusion_matrix": [
+            [
+              23280,
+              232
+            ],
+            [
+              6549,
+              11920
+            ]
+          ]
+        },
+        "model": {
+          "accuracy": 0.8382601653128796,
+          "precision": 0.9806568441847066,
+          "recall": 0.6450809464508095,
+          "f1": 0.7782350251486054,
+          "false_positive_rate": 0.009994896223205171,
+          "missed_phishing_rate": 0.3549190535491905,
+          "confusion_matrix": [
+            [
+              23277,
+              235
+            ],
+            [
+              6555,
+              11914
+            ]
+          ]
+        }
+      },
+      "validation_probability": {
+        "roc_auc": 0.9367890722268378,
+        "average_precision": 0.9398083278220456,
+        "brier_score": 0.08812790907487024
+      },
+      "training_and_calibration_seconds": 12.570660299854353,
+      "trials": [
+        {
+          "candidate": 1,
+          "parameters": {
+            "boosting_type": "gbdt",
+            "class_weight": null,
+            "colsample_bytree": 0.9,
+            "importance_type": "split",
+            "learning_rate": 0.04,
+            "max_depth": -1,
+            "min_child_samples": 30,
+            "min_child_weight": 0.001,
+            "min_split_gain": 0.0,
+            "n_estimators": 800,
+            "n_jobs": 4,
+            "num_leaves": 31,
+            "objective": "binary",
+            "random_state": 42,
+            "reg_alpha": 0.0,
+            "reg_lambda": 3,
+            "subsample": 0.9,
+            "subsample_for_bin": 200000,
+            "subsample_freq": 1,
+            "verbosity": -1,
+            "deterministic": true,
+            "force_col_wise": true
+          },
+          "model_weight": 0.9,
+          "thresholds": {
+            "model": 0.8801166609176259,
+            "hybrid": 0.7955506433031081,
+            "rules": 0.3
+          },
+          "validation_results": {
+            "hybrid": {
+              "accuracy": 0.8384745480098139,
+              "precision": 0.9809084924292297,
+              "recall": 0.6454058151497103,
+              "f1": 0.7785506678423304,
+              "false_positive_rate": 0.009867301803334467,
+              "missed_phishing_rate": 0.35459418485028965,
+              "confusion_matrix": [
+                [
+                  23280,
+                  232
+                ],
+                [
+                  6549,
+                  11920
+                ]
+              ]
+            },
+            "model": {
+              "accuracy": 0.8382601653128796,
+              "precision": 0.9806568441847066,
+              "recall": 0.6450809464508095,
+              "f1": 0.7782350251486054,
+              "false_positive_rate": 0.009994896223205171,
+              "missed_phishing_rate": 0.3549190535491905,
+              "confusion_matrix": [
+                [
+                  23277,
+                  235
+                ],
+                [
+                  6555,
+                  11914
+                ]
+              ]
+            }
+          },
+          "validation_probability": {
+            "roc_auc": 0.9367890722268378,
+            "average_precision": 0.9398083278220456,
+            "brier_score": 0.08812790907487024
+          },
+          "training_and_calibration_seconds": 12.570660299854353
+        },
+        {
+          "candidate": 2,
+          "parameters": {
+            "boosting_type": "gbdt",
+            "class_weight": null,
+            "colsample_bytree": 0.9,
+            "importance_type": "split",
+            "learning_rate": 0.04,
+            "max_depth": -1,
+            "min_child_samples": 30,
+            "min_child_weight": 0.001,
+            "min_split_gain": 0.0,
+            "n_estimators": 1000,
+            "n_jobs": 4,
+            "num_leaves": 63,
+            "objective": "binary",
+            "random_state": 42,
+            "reg_alpha": 0.0,
+            "reg_lambda": 3,
+            "subsample": 0.9,
+            "subsample_for_bin": 200000,
+            "subsample_freq": 1,
+            "verbosity": -1,
+            "deterministic": true,
+            "force_col_wise": true
+          },
+          "model_weight": 1.0,
+          "thresholds": {
+            "model": 0.8890430579977513,
+            "hybrid": 0.8890430579977513,
+            "rules": 0.3
+          },
+          "validation_results": {
+            "hybrid": {
+              "accuracy": 0.8383792668111765,
+              "precision": 0.9806648017113707,
+              "recall": 0.6453516703665602,
+              "f1": 0.7784345100088169,
+              "false_positive_rate": 0.009994896223205171,
+              "missed_phishing_rate": 0.35464832963343984,
+              "confusion_matrix": [
+                [
+                  23277,
+                  235
+                ],
+                [
+                  6550,
+                  11919
+                ]
+              ]
+            },
+            "model": {
+              "accuracy": 0.8383792668111765,
+              "precision": 0.9806648017113707,
+              "recall": 0.6453516703665602,
+              "f1": 0.7784345100088169,
+              "false_positive_rate": 0.009994896223205171,
+              "missed_phishing_rate": 0.35464832963343984,
+              "confusion_matrix": [
+                [
+                  23277,
+                  235
+                ],
+                [
+                  6550,
+                  11919
+                ]
+              ]
+            }
+          },
+          "validation_probability": {
+            "roc_auc": 0.9375430277390596,
+            "average_precision": 0.9403817613170244,
+            "brier_score": 0.08781442829770635
+          },
+          "training_and_calibration_seconds": 18.229847399983555
+        }
+      ],
+      "batch_model_ms_per_url": 0.06472506898473654,
+      "test_results": {
+        "model": {
+          "accuracy": 0.8476131346578366,
+          "precision": 0.981743388834476,
+          "recall": 0.6621132454355695,
+          "f1": 0.7908540049233099,
+          "false_positive_rate": 0.009485232754584868,
+          "missed_phishing_rate": 0.33788675456443046,
+          "confusion_matrix": [
+            [
+              48663,
+              466
+            ],
+            [
+              12788,
+              25059
+            ]
+          ]
+        },
+        "hybrid": {
+          "accuracy": 0.8478430831493745,
+          "precision": 0.9818331310442034,
+          "recall": 0.6625888445583533,
+          "f1": 0.7912223133716161,
+          "false_positive_rate": 0.009444523601131714,
+          "missed_phishing_rate": 0.3374111554416466,
+          "confusion_matrix": [
+            [
+              48665,
+              464
+            ],
+            [
+              12770,
+              25077
+            ]
+          ]
+        },
+        "default_05": {
+          "accuracy": 0.8785182119205298,
+          "precision": 0.8984838304460869,
+          "recall": 0.8126403677966549,
+          "f1": 0.853408807125614,
+          "false_positive_rate": 0.07073215412485498,
+          "missed_phishing_rate": 0.18735963220334503,
+          "confusion_matrix": [
+            [
+              45654,
+              3475
+            ],
+            [
+              7091,
+              30756
+            ]
+          ]
+        },
+        "rules": {
+          "accuracy": 0.5886336460632818,
+          "precision": 0.9210097719869706,
+          "recall": 0.05976695642983592,
+          "f1": 0.11224970845842741,
+          "false_positive_rate": 0.003948787884955932,
+          "missed_phishing_rate": 0.9402330435701641,
+          "confusion_matrix": [
+            [
+              48935,
+              194
+            ],
+            [
+              35585,
+              2262
+            ]
+          ]
+        }
+      },
+      "probabilistic_metrics": {
+        "roc_auc": 0.9312972897322571,
+        "average_precision": 0.9351659882017094,
+        "brier_score": 0.09119421056839604
+      },
+      "single_url_analysis_median_ms": 1.3273998629301786,
+      "single_url_analysis_p95_ms": 1.5394350746646523
+    }
+  },
+  "limitations": [
+    "Historical datasets and collection bias; not a safety guarantee.",
+    "No future-time mixed-class validation supplied.",
+    "Hybrid risk index is not a calibrated probability.",
+    "False-positive rate is constrained on validation only."
+  ],
+  "selected_model": "xgboost",
+  "selected_model_name": "XGBoost",
+  "baseline_on_same_test": {
+    "trained_at": "2026-10-16T03:59:27.110146+00:00",
+    "hybrid": {
+      "accuracy": 0.8447042862398823,
+      "precision": 0.9825535289452815,
+      "recall": 0.65474145903242,
+      "f1": 0.7858309416969255,
+      "false_positive_rate": 0.008956013759693867,
+      "missed_phishing_rate": 0.34525854096758,
+      "confusion_matrix": [
+        [
+          48689,
+          440
+        ],
+        [
+          13067,
+          24780
+        ]
+      ]
+    },
+    "matches_historical_confusion_matrix": true,
+    "verified_split_indices": true,
+    "verified_dataset_order_and_labels_sha256": "b41677b5073aa2f2125130a6c31ebd4d3250285ce76a84e3c7468a036423e856"
+  },
+  "improvement_percentage_points": {
+    "accuracy": 0.5139348785871967,
+    "precision": -0.05599848236309546,
+    "recall": 1.2418421539355906,
+    "f1": 0.869391670458497,
+    "false_positive_rate": 0.04681552647112699
+  },
+  "paired_change_counts": {
+    "additional_phishing_detected": 470,
+    "additional_false_positives": 23
+  }
+}

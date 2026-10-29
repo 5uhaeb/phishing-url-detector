@@ -133,9 +133,9 @@ def evaluate_rules(features):
     return min(1.0, sum(weight for active, weight, _ in checks if active)), indicators
 
 
-def hybrid_score(probability, rule_score):
-    # A risk index, not a calibrated probability. Fixed before validation/testing.
-    return .8 * probability + .2 * rule_score
+def hybrid_score(probability, rule_score, model_weight=.8):
+    # A risk index, not a calibrated probability. Weight is frozen before testing.
+    return model_weight * probability + (1 - model_weight) * rule_score
 
 
 def analyze(value, artifact):
@@ -145,7 +145,7 @@ def analyze(value, artifact):
     model = artifact['model']
     phishing_column = list(model.classes_).index(1)
     probability = float(model.predict_proba(vector)[0, phishing_column])
-    score = hybrid_score(probability, rule_score)
+    score = hybrid_score(probability, rule_score, artifact.get('model_weight', .8))
     threshold = artifact['threshold']
     phishing = score >= threshold
     risk = 'High' if phishing else ('Medium' if score >= min(.3, threshold * .6)
@@ -154,6 +154,8 @@ def analyze(value, artifact):
                 risk=risk, model_score=round(probability * 100, 1),
                 rule_score=round(rule_score * 100, 1), hybrid_score=round(score * 100, 1),
                 threshold=round(threshold * 100, 1), indicators=indicators,
-                model_prediction='Phishing' if probability >= artifact.get('rf_threshold', .5) else 'Legitimate',
+                model_prediction='Phishing' if probability >= artifact.get('model_threshold', artifact.get('rf_threshold', .5)) else 'Legitimate',
+                model_name=artifact.get('model_name', 'Random Forest'),
+                model_weight=artifact.get('model_weight', .8),
                 features=features, model_version=artifact['trained_at'],
                 calibrated=artifact.get('calibrated', False))

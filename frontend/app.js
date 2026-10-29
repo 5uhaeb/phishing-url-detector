@@ -43,7 +43,8 @@ function showResult(result) {
   const rows = [
     ['Decision evidence', result.evidence],
     ['Public-feed exact URL check', result.public_feeds.status.replaceAll('_', ' ')],
-    ['Random Forest score', `${result.model_score}%${result.calibrated ? ' (historically calibrated)' : ''}`],
+    [`${result.model_name || 'Detection model'} score`, `${result.model_score}%${result.calibrated ? ' (historically calibrated)' : ''}`],
+    ['Model share of risk index', `${Math.round((result.model_weight ?? .8) * 100)}%`],
     ['Rule score', `${result.rule_score} / 100`],
     ['Combined risk index', `${result.hybrid_score} / 100`],
     ['Phishing decision threshold', `${result.threshold} / 100`],

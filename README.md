@@ -1,6 +1,6 @@
 # Lightweight Hybrid Phishing URL Detection
 
-A responsive LinkGuard interface, public phishing-feed matching, cybersecurity rules, and a calibrated Random Forest. The default setup requires no API key. Submitted URLs are never visited, logged, or saved by the application. A local SQLite index stores downloaded public threat indicators, not user submissions. There is no frontend framework or user account system.
+A responsive LinkGuard interface, public phishing-feed matching, cybersecurity rules, and a calibrated model selected from Random Forest, XGBoost and LightGBM. The default setup requires no API key. Submitted URLs are never visited, logged, or saved by the application. A local SQLite index stores downloaded public threat indicators, not user submissions. There is no frontend framework or user account system.
 
 The Flask interface works without JavaScript. A separate static frontend in `frontend/` supports Vercel hosting with the Python API on Render. Both interfaces share the responsive stylesheet, including mobile layouts, visible keyboard focus and readable risk states. See [DEPLOYMENT.md](DEPLOYMENT.md) for deployment configuration and browser tests.
 
@@ -10,7 +10,7 @@ Open PowerShell in this folder:
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r dependencies.lock.txt
 .\.venv\Scripts\python.exe train.py --download
 .\.venv\Scripts\python.exe feeds.py
 .\.venv\Scripts\python.exe app.py
@@ -27,7 +27,7 @@ Training downloads the public UCI archive (~15 MB compressed) and the supplement
 .\.venv\Scripts\python.exe benchmark.py
 ```
 
-Run tests after training. Capture exact installed versions with `python -m pip freeze > dependencies.lock.txt` using the virtual environment's Python.
+Run tests after training. The committed `dependencies.lock.txt` pins the verified environment. Update it deliberately when changing dependencies.
 
 ## Files
 
@@ -42,21 +42,34 @@ Run tests after training. Capture exact installed versions with `python -m pip f
 - `test_detector.py`: validation, offline behavior, and application checks.
 - `requirements.txt`: Python dependencies.
 
-Generated files include `data/` (datasets, feed snapshots, feed index, source license, prior model backup), `model.joblib`, `evaluation.json`, `external-evaluation.json`, `benchmark-results.json`, and `dependencies.lock.txt`. Data, model artifacts, and the environment are ignored by Git. Do not load model files from untrusted sources: joblib uses pickle serialization.
+The pinned dependency lock is committed. Generated files include `data/` (datasets, feed snapshots, feed index, source license, prior model backup), `model.joblib`, `evaluation.json`, `external-evaluation.json`, `benchmark-results.json`, and immutable experiment/release artifacts. Data, model artifacts, and the environment are ignored by Git. Do not load model files from untrusted sources: joblib uses pickle serialization.
 
-## Method
+## Phase 1: three-model training
 
-1. Read only raw URLs and labels, ignoring UCI's precomputed webpage features. Add the documented ealvaradob raw-URL corpus so legitimate training URLs include paths and queries. UCI PhiUSIIL contains no legitimate non-root paths; using it alone taught an invalid path=phishing shortcut. The original UCI-only metrics are retained only as a biased development baseline, not evidence of general-purpose link detection.
-2. Remove duplicate and conflicting labels, sample reproducibly, validate/normalize URLs, then remove normalized duplicates/conflicts.
-3. Ignore a conventional leading `www.` in lexical feature measurements to reduce a collection-style shortcut noticed during smoke testing. The original URL stays visible and is never redirected or rewritten. Feature lengths/subdomain counts refer to this measurement form. Split approximately 60% training, 20% validation, 20% test by registered domain. Private suffixes such as hosted blog domains are included using tldextract's bundled suffix list; submitted URLs never trigger suffix-list downloads.
-4. Train 240 trees, maximum depth 24, minimum leaf size 2, balanced class weights, seed 42. No scaling is needed for tree splits. Fit sigmoid score calibration using a separately held-out set of domains.
-5. Compute a fixed combined index: `0.8 * model score + 0.2 * rule score`. The weights and rules are design choices, not results from the base paper.
-6. Use approximately 60/10/10/20 train/calibrate/threshold-selection/test splits, disjoint by registered domain. Select thresholds to maximize validation recall subject to validation false-positive rate <=1%. This is a validation target, not a guaranteed production bound. Never select thresholds on test results. The standalone label uses its own validation-selected threshold.
-7. Exact URL matches in fresh public feeds take priority and show Known phishing threat with source and download time. This means a source reported that URL, not that this application visited or independently verified it. Otherwise local high scores show Suspicious URL and ambiguous/medium signals show Needs review. Low local scores show Low predicted risk. A separate Verification field describes what independent evidence was checked; missing external verification does not turn a low predicted risk into Unknown. Low risk still does not establish safety. An optional negative Google lookup never overrides a local warning. Expired feed matches can trigger review but cannot be presented as current threat evidence.
+The project is now developed in `C:/Users/shaik/Downloads/Codex/phishing-url-detector`, on branch `phase-1-model-comparison`. The original Downloads project remains intact.
 
-Internal label 1 means phishing. UCI's label 1 means legitimate, so training explicitly inverts the original labels. `evaluation.json` records split class counts, thresholds, confusion matrices (rows=true, columns=predicted; legitimate then phishing), accuracy/precision/recall/F1, training time, batch inference, median/p95 single-URL analysis time, data checksum, and environment details. Report actual results, even if the hybrid performs worse than Random Forest alone.
+```powershell
+# Full comparison; promote the validation-selected champion locally.
+.\.venv\Scripts\python.exe train.py --jobs 4
+# Experiment without changing local serving files.
+.\.venv\Scripts\python.exe train.py --max-rows 40000 --no-promote
+```
 
-Rules inspect IP hosts, @, subdomains, lengths, hyphens, digit ratio, keywords, HTTP, punycode, percent encoding, opaque path tokens, brands in subdomains, and nested destination URLs. These are warning signals, not proof of phishing or local explanations of the model. Model scores are sigmoid-calibrated on historical data; calibration can fail under distribution shift. The combined index is not a probability. HTTPS, familiar names, and low model scores do not guarantee safety. URL-only inference does not inspect site content, redirects, DNS, certificates, or domain age. The product adds public-feed evidence but still cannot guarantee detection of new attacks.
+1. Read raw URLs and labels from both sources. Invert UCI labels explicitly: internal 1=phishing. Remove contradictory labels, exact duplicates, invalid URLs and normalized duplicates. Never visit dataset URLs or use precomputed webpage features.
+2. Measure 32 lexical features using the same extractor at training and inference. Ignore the conventional leading www prefix in measurements to reduce collection bias. UCI-only legitimate URLs are all homepages; the supplementary source supplies ordinary paths and queries.
+3. Use the same deterministic, registered-domain-disjoint training/calibration/validation/test partitions for all three families, approximately 60/10/10/20. Private hosted domains use the bundled suffix list. Save exact split indices, dataset checksums and split fingerprints.
+4. Train two predeclared parameter settings per family. Fit sigmoid calibration only on calibration domains. Search exact validation score cutoffs to maximize phishing recall subject to validation false-positive rate <=1% (configurable with `--max-fpr`). Tied scores stay together; predicting no positives is a valid fallback.
+5. Compare model shares of 100%, 90% and 80% in the local risk index. Freeze the parameter setting, model share and threshold using validation recall, then precision and average precision. Select the champion before computing test predictions. Rules remain visible even when their index share is zero.
+6. Report every family on the same frozen test partition: accuracy, precision, recall, F1, FPR, confusion matrix, ROC AUC, average precision, Brier score and inference latency. Also report the standalone calibrated model at its selected cutoff and at 0.5. Feed matches are excluded.
+7. Preserve all family artifacts in `artifacts/<run-id>/`, with the previous local release in `previous-release/`. Export a serving copy and update the local champion unless `--no-promote` is set. Restart the app after promotion. For deployment, package a verified immutable release; see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+Read [reports/comparison.md](reports/comparison.md) for measured results and [reports/comparison.json](reports/comparison.json) for the full audit. `/api/models` returns current model comparisons. Prediction responses include `model_name` and `model_weight`; both interfaces display the active model accurately. Old external evaluations are excluded from the export when their model version differs.
+
+The historical test split has been used during previous development. These are controlled regression comparisons, not a new prospective benchmark. Validation FPR is a selection target; future and test FPR can exceed it. Historical calibration can fail on new campaigns. A risk index is not a probability or proof of safety. URL-only inference does not inspect webpage content, redirects, DNS, certificates or domain age.
+
+Fresh exact public-feed matches take precedence. Otherwise, local warnings and an explicit verification field remain separate. Optional Google Web Risk requires a configured key and explicit per-request consent. Missing evidence is never treated as proof of safety. Rule indicators describe triggered checks, not individual explanations of the learned model.
+
+Phase 2 redesign is deferred until the client supplies the preferred reference/resource.
 
 ## Free public threat intelligence
 
@@ -67,15 +80,15 @@ Matching is conservative: URL path, query case, and fragment distinctions are re
 
 Google Web Risk remains optional and disabled without `WEB_RISK_API_KEY`. If you supply your own legitimate key in the server environment, each request still requires explicit consent; API JSON uses `"consent": true`. Never use keys discovered in other people's repositories. This adapter can require billing, so it is not needed for the free default. URLs with embedded credentials/private numeric addresses/reserved destinations are not sent. Failures are reported as unavailable, never as clean; matches expire according to provider timestamps. The official endpoint is fixed, redirects disabled, and connect/read timeouts bounded.
 
-## Measured results (16 October 2026, India time)
+## Historical baseline (16 October 2026, India time)
 
-`evaluation.json` records the currently deployed multi-source experiment, including source checksums, source/class path distributions, disjoint-domain split sizes, and current metrics. Feed results are excluded. The previous UCI-only experiment reported 97.46% accuracy but failed ordinary repository/video/documentation links because all legitimate training records were homepages. Its model and report are retained under `data/before-path-bias-*` for the audit; those scores must not be advertised as current real-world performance. The supplementary dataset corrects the missing legitimate-path coverage; no GitHub/YouTube whitelist is used.
+Before phase 1, `evaluation.json` recorded the multi-source baseline, including source checksums, source/class path distributions, disjoint-domain split sizes, and current metrics. Feed results are excluded. The previous UCI-only experiment reported 97.46% accuracy but failed ordinary repository/video/documentation links because all legitimate training records were homepages. Its model and report are retained under `data/before-path-bias-*` for the audit; those scores must not be advertised as current real-world performance. The supplementary dataset corrects the missing legitimate-path coverage; no GitHub/YouTube whitelist is used.
 
 `external-evaluation.json` filters out every registered domain used anywhere in the current development experiment and uses one URL per remaining domain. Always compare its `model_version` with the current model; rerun it after training. These positive-only samples measure recall, not precision, F1, false-positive rate, or accuracy. Feed matching against the same snapshots is only an integration check. Feed labels can be wrong, and the snapshots do not provide independent manual verification or a future-time test.
 
 The regression suite also evaluates ordinary real-world URL structures, including repository paths, YouTube video queries, documentation, and sign-in pages. These are manually selected diagnostic examples, not an independent accuracy dataset or a live verification of those pages. The scanner does not fetch their contents.
 
-After the path-bias correction, the mixed-source held-out hybrid measured 84.47% accuracy, 65.47% phishing recall, and 0.90% false-positive rate at the conservative validation-selected threshold. On new-domain positive-only feed samples, model-only recall was 210/244 (86.07%) for OpenPhish and 245/500 (49.00%) for Phishing.Database; all 744 exact feed matches were separately recognized. This generalization gap remains material: the standalone model is not production-ready. Ordinary GitHub repository URLs and youtube.com now score Low in the curated regression checks, while some video/sign-in/documentation URLs and the user-reported phishing example remain Medium. Full live API regression output is saved in `data/real-url-checks.json`; these cases must not be counted as an independent performance benchmark.
+The preserved pre-phase-1 baseline, after the path-bias correction, measured 84.47% accuracy, 65.47% phishing recall, and 0.90% false-positive rate at the conservative validation-selected threshold. On new-domain positive-only feed samples, model-only recall was 210/244 (86.07%) for OpenPhish and 245/500 (49.00%) for Phishing.Database; all 744 exact feed matches were separately recognized. This generalization gap remains material: the standalone model is not production-ready. Ordinary GitHub repository URLs and youtube.com now score Low in the curated regression checks, while some video/sign-in/documentation URLs and the user-reported phishing example remain Medium. Full live API regression output is saved in `data/real-url-checks.json`; these cases must not be counted as an independent performance benchmark.
 
 For independent mixed-class evaluation, provide `--csv path.csv` to `evaluate.py`, using columns `URL,label` with 1=phishing and 0=legitimate. This differs from the original UCI label convention. Input source provenance and label quality remain the researcher's responsibility. No model or threshold is refitted by evaluation.
 
@@ -105,8 +118,8 @@ Dataset: Arvind Prasad and Shalini Chandra (2024), *PhiUSIIL Phishing URL (Websi
 
 Supplementary raw URL dataset: ealvaradob, *Phishing Dataset*, URL-only `urls.json` configuration, declared Apache-2.0 by its publisher: https://huggingface.co/datasets/ealvaradob/phishing-dataset . Its card documents the original Kaggle/JPCERT/GitHub/open-database compilation. Only JSON text/labels are loaded; no remote Python loader is executed. Original 1=phishing / 0=benign labels are explicitly converted to the training convention. Bare URLs receive an inferred https:// scheme consistently across both classes; this assumption and counts are recorded in the report. This historical compiled dataset can have labeling/source bias and does not establish current website safety. `--no-additional-data` is available only to reproduce the known-biased UCI-only baseline.
 
-Base paper: Yeasmin et al. (2026), *EnLeM: ensemble learning-based model to detect phishing websites*, EURASIP Journal on Information Security, article 1. https://doi.org/10.1186/s13635-025-00219-1 . EnLeM uses Decision Tree/Random Forest/k-NN voting; this project instead combines lexical cybersecurity rules with Random Forest. It is not a reproduction of EnLeM or its reported results.
+Base paper: Yeasmin et al. (2026), *EnLeM: ensemble learning-based model to detect phishing websites*, EURASIP Journal on Information Security, article 1. https://doi.org/10.1186/s13635-025-00219-1 . EnLeM uses Decision Tree/Random Forest/k-NN voting; this project combines lexical rules with a calibrated model selected from Random Forest, XGBoost and LightGBM. It is not a reproduction of EnLeM or its reported results.
 
 This implementation was prepared with AI assistance. Review the code, reproduce the experiments, explain the choices in your own words, and follow your university's disclosure policy. Original implementation does not replace citation of the dataset and research sources.
 
-Future work from the abstract: batch input, periodic retraining, model optimization, browser extension, and email URL extraction. These are outside this first version.
+Remaining future work: batch input, monitored periodic retraining, a browser extension and email URL extraction. Phase 1 adds the model comparison and optimization workflow described above.

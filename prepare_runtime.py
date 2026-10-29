@@ -2,7 +2,8 @@
 
 The full research artifact stays intact for independent-domain evaluation.
 The runtime copy omits evaluation-only domain hashes and stores every trained
-tree in compact, uncompressed arrays for memory-mapped inference.
+forest tree in compact, uncompressed arrays for memory-mapped inference.
+Boosted estimators retain their calibrated native model and dependencies.
 """
 import argparse
 from pathlib import Path
@@ -21,9 +22,12 @@ def prepare(source, destination):
     artifact = joblib.load(source)
     artifact.pop('development_group_hashes', None)
     original = artifact['model']
-    runtime = CompactForest.from_sklearn(original)
+    # The compact exporter is forest-specific. Boosted models retain their native
+    # calibrated estimator and its installed dependencies, without domain hashes.
+    runtime = (CompactForest.from_sklearn(original)
+               if artifact.get('model_family', 'random_forest') == 'random_forest' else original)
     # Fail the build rather than ship an exporter incompatible with this model.
-    probes = np.random.default_rng(42).uniform(0, 1000, (128, runtime.n_features_in_))
+    probes = np.random.default_rng(42).uniform(0, 1000, (128, len(artifact['features'])))
     np.testing.assert_allclose(runtime.predict_proba(probes), original.predict_proba(probes),
                                rtol=0, atol=1e-12)
     artifact['model'] = runtime

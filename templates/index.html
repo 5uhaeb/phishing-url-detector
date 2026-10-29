@@ -13,7 +13,7 @@
   <header class="topbar"><div class="brand"><span class="brand-mark" aria-hidden="true">&#10003;</span>LinkGuard</div><span class="tag">Think before you click</span></header>
   <div class="eyebrow">Phishing URL Detection</div>
   <h1>A little caution.<br>A safer next click.</h1>
-  <p class="intro">Check a URL against public phishing reports, cybersecurity rules and a Random Forest model.</p>
+  <p class="intro">Check a URL against public phishing reports, cybersecurity rules and a trained detection model.</p>
   <details><summary>Public feed status: {{ feed_summary.status }}</summary>
     {% for source in feed_summary.sources %}<p>{{ source.name }}: {{ source.indicator_count }} entries; downloaded {{ source.fetched_at }} (UTC). {% if not source.fresh %}Snapshot expired.{% endif %}</p>{% endfor %}
     <p>Feed matching happens locally. Your URL is not sent to these feed providers.</p>
@@ -60,7 +60,7 @@
       {% if result.external_reputation.status != 'not_requested' %}<tr><td>Google Web Risk lookup</td><td>{{ result.external_reputation.status|replace('_', ' ') }}</td></tr>{% endif %}
       {% for source in result.public_feeds.sources %}<tr><td>Feed evidence</td><td>{{ source.name }} — downloaded {{ source.fetched_at }} (UTC)</td></tr>{% endfor %}
       {% if result.reputation.threats %}<tr><td>Matched threat categories</td><td>{{ result.reputation.threats|join(', ') }}</td></tr>{% endif %}
-      <tr><td>Random Forest score{% if result.calibrated %} (historically calibrated){% endif %}</td><td>{{ result.model_score }}%</td></tr>
+      <tr><td>{{ result.model_name }} score{% if result.calibrated %} (historically calibrated){% endif %}</td><td>{{ result.model_score }}%</td></tr>
       <tr><td>Rule score</td><td>{{ result.rule_score }} / 100</td></tr>
       <tr><td>Combined risk index</td><td>{{ result.hybrid_score }} / 100</td></tr>
       <tr><td>Phishing decision threshold</td><td>{{ result.threshold }} / 100</td></tr>
@@ -78,7 +78,7 @@
       <button type="submit">Download fresh result (JSON)</button>
     </form>
     <details><summary>How to read the result</summary>
-      <p>Fresh exact-URL feed matches take priority. Otherwise, the combined local index is 80% model score and 20% rule score. It is not a probability or safety guarantee. The model is calibrated on historical data; calibration can fail on new attacks.</p>
+      <p>Fresh exact-URL feed matches take priority. Otherwise, the local index uses {{ '%.0f'|format(result.model_weight * 100) }}% model score and {{ '%.0f'|format((1 - result.model_weight) * 100) }}% rule score. It is not a probability or safety guarantee. The model is calibrated on historical data; calibration can fail on new attacks.</p>
       <p>Indicators describe triggered rules, not individual explanations of the model prediction.</p>
     </details>
     <details><summary>Extracted features</summary>

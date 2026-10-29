@@ -10,6 +10,7 @@ from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 import requests
+import os
 
 from detector import parse_url
 
@@ -39,6 +40,15 @@ class FeedStore:
     def __init__(self, directory=None):
         self.directory = Path(directory) if directory else ROOT / 'data' / 'feeds'
         self.database = self.directory / 'indicators.sqlite'
+        keys = os.getenv('PUBLIC_FEED_KEYS', ','.join(SOURCES)).split(',')
+        if not keys or any(key not in SOURCES for key in keys):
+            raise ValueError('PUBLIC_FEED_KEYS must list known feed keys.')
+        self._source_keys = tuple(keys) if 'PUBLIC_FEED_KEYS' in os.environ else None
+
+    @property
+    def sources(self):
+        return ({key: SOURCES[key] for key in self._source_keys}
+                if self._source_keys is not None else SOURCES)
 
     def status(self):
         if not self.database.exists():
@@ -49,13 +59,15 @@ class FeedStore:
             sources = []
             now = datetime.now(timezone.utc)
             for key, payload in rows:
+                if self._source_keys is not None and key not in self._source_keys:
+                    continue
                 item = json.loads(payload)
                 age = (now - datetime.fromisoformat(item['fetched_at'])).total_seconds()
                 item.update(key=key, fresh=0 <= age <= item['ttl_hours'] * 3600,
                             age_hours=round(age / 3600, 2))
                 sources.append(item)
             fresh = sum(source['fresh'] for source in sources)
-            state = 'fresh' if fresh == len(SOURCES) else ('partial' if fresh else 'stale')
+            state = 'fresh' if fresh == len(self.sources) else ('partial' if fresh else 'stale')
             return dict(status=state, sources=sources,
                         total_indicators=sum(s['indicator_count'] for s in sources))
         except (sqlite3.Error, ValueError, KeyError, TypeError):
@@ -64,7 +76,7 @@ class FeedStore:
     def refresh(self, only=None):
         self.directory.mkdir(parents=True, exist_ok=True)
         results = []
-        for key, source in SOURCES.items():
+        for key, source in self.sources.items():
             if only and key not in only:
                 continue
             try:

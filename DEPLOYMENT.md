@@ -1,120 +1,99 @@
-# GitHub, Render and Vercel
+# Deploying a tested model release
 
-## Project deployment
+Phase 1 is prepared for the existing production hosts: the [Vercel frontend](https://phishing-url-detector-xi.vercel.app) and [Render API](https://linkguard-api-5m93.onrender.com).
 
-- Frontend: https://phishing-url-detector-xi.vercel.app
-- Backend: https://linkguard-api-5m93.onrender.com
-- Health: https://linkguard-api-5m93.onrender.com/health
-- GitHub: https://github.com/5uhaeb/phishing-url-detector (private)
+Training and serving are separate. A backend build installs the versioned, checksum-pinned bundle in the private repository, or downloads an explicitly configured release. It never trains a new model. Retain each release and its code revision for rollback.
 
-The committed `frontend/vercel.json` forwards `/api/*` to this Render service.
-The Render frontend-origin allowlist includes the production frontend above.
-Render deploys are manual so documentation and frontend-only pushes do not
-retrain the backend. After backend changes, deploy the latest commit from
-Render and verify `/health` and a prediction from the Vercel frontend.
+## Train and validate
 
-The repository root is the Python backend. Set the Vercel project root to
-`frontend`, enable access to files outside that directory, and use the static
-output directory `dist`. The frontend has no runtime npm dependencies.
-
-## Backend on Render
-
-Create a Blueprint from `render.yaml`. It uses the free plan, installs Python
-dependencies, and trains the same full mixed-source model during the build.
-The model and raw datasets stay outside Git. Training can take several minutes
-and needs substantially more memory than inference. Hosting capacity and
-build success still need verification on the actual account.
-
-The build also runs `prepare_runtime.py` and downloads the initial public feed
-snapshots. The runtime copy keeps the exact trained parameters and scores,
-omits evaluation-only domain hashes, and stores all tree splits and leaf
-probabilities in compact uncompressed arrays for memory-mapped inference.
-The serving process does not import scikit-learn or pandas. Input casting,
-tree averaging and sigmoid calibration match the research model; export
-checks score parity and fails the build on a mismatch. Tests also check split
-boundaries. The full research artifact remains available for
-independent-domain evaluation. `MODEL_PATH=runtime-model.joblib` and
-`MODEL_MMAP=1` select this copy on Render. Resource limits still need a live
-startup check; local Windows memory figures do not establish Linux usage.
-
-Set `FRONTEND_ORIGINS` to the exact Vercel production origin, for example
-`https://linkguard-example.vercel.app`. Multiple explicitly trusted origins
-can be comma-separated. Never use a wildcard for preview deployments.
-Render's external hostname is added to trusted hosts automatically.
-The server listens on `0.0.0.0:$PORT` and `/health` returns 200 only when
-the trained model is loaded. Public feeds refresh in a background thread.
-Missing feeds are reported as unavailable until downloaded; a missing match
-is never treated as proof of safety.
-
-Optional: `WEB_RISK_API_KEY` enables consent-gated Google Web Risk lookups.
-It belongs only on the backend. The default rate limiter uses single-process
-memory; configure `RATELIMIT_STORAGE_URI` with Redis before scaling instances.
-
-## Frontend on Vercel
-
-After Render provides its URL, generate routing configuration **before**
-Vercel reads the source. In PowerShell:
+From the project root in PowerShell:
 
 ```powershell
-cd frontend
-$env:BACKEND_URL = 'https://your-actual-service.onrender.com'
-node configure-vercel.mjs
-npm ci
-npm run check
-npm run build
-```
-
-Commit the generated `frontend/vercel.json` before a Git-based deployment,
-or deploy this directory using Vercel CLI after configuration. The script
-generates exact `/api/*` rewrites to the backend and security headers.
-Run it again if the backend URL changes. The build command is
-`node build.mjs`; routing is deliberately configured before the build.
-
-After the frontend URL is known, update Render's `FRONTEND_ORIGINS` and
-redeploy the backend. The browser submits to its own `/api/predict` route;
-Vercel proxies that request to Render. Flask permits that request only for
-the configured frontend origin. Verify this behavior against the deployed
-proxy, including host/origin headers, before considering launch complete.
-
-## Local verification
-
-Run the backend tests after training:
-
-```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r dependencies.lock.txt
+.\.venv\Scripts\python.exe train.py --download --jobs 4
 .\.venv\Scripts\python.exe -m unittest -v
 cd frontend
 npm ci
 npm run check
 npm run build
 npm test
+cd ..
 ```
 
-The browser suite uses installed Google Chrome and starts an isolated local
-server with the real Python model. It checks 320, 375, 768 and 1440 pixel
-widths, WCAG A/AA rules via axe, analysis, JSON downloads, request failures,
-clearing pending requests and safe rendering of untrusted URL text.
-Set `LINKGUARD_PYTHON` if the virtual environment lives elsewhere.
-The test preview server is local only and is not a production start command.
+The backend suite requires the full trained model. `ci/quality-checks.workflow.yml` is an Actions template for training, release, bundled-model API and frontend checks. It is stored as a template because the current GitHub token lacks workflow-write scope. Browser tests use installed Google Chrome and the real local API. They cover four viewport widths, WCAG A/AA checks, prediction, downloads, error handling and safe URL rendering. Set `LINKGUARD_PYTHON` if the interpreter lives elsewhere.
 
-To run those browser checks against the deployed frontend instead:
+The winner is chosen on validation domains before testing. Keep the report, split indices, dataset checksums and models together. Historical test improvements do not establish future production accuracy. Supply an independently labeled mixed-class CSV to `evaluate.py --csv <path>` for external validation; labels are 1=phishing, 0=legitimate.
+
+## Create the release
 
 ```powershell
-$env:LINKGUARD_BASE_URL = 'https://phishing-url-detector-xi.vercel.app'
-npm test
+.\.venv\Scripts\python.exe release.py build
+.\.venv\Scripts\python.exe release.py verify
 ```
 
-This skips the local server and verifies predictions through Vercel's real
-proxy to Render. Wait until the Render health check reports ready first.
+This creates `release/current/` and `release/current.zip`, prints the archive SHA256, and includes the serving model, matching evaluation, pinned dependency lock and a per-file manifest. Existing release destinations are immutable; use `--directory release/<new-version>` for another release. The full research model and domain hashes remain outside the serving bundle.
 
-## Launch verification
+Random Forest exports to compact arrays with score parity checks. XGBoost and LightGBM retain their calibrated estimators and require their pinned libraries at runtime. The exporter never treats a boosted model as a forest.
 
-- Confirm Render `/health` is ready and `/api/status` matches the model and feeds.
-- Submit a known ordinary URL from the Vercel production frontend.
-- Check the error state, a narrow mobile viewport and a JSON download.
-- Verify requests from an unrelated origin still receive HTTP 403.
-- Remember that free service cold starts and ephemeral storage can affect
-  availability and feed freshness. The UI surfaces network failures and
-  feed status; it never replaces a failed analysis with a safe verdict.
+Install only trusted artifacts. A checksum pins bytes; joblib still uses pickle serialization. Obtain the expected hash through a trusted channel alongside the selected code revision.
 
-Configuration references: [Vercel rewrites](https://vercel.com/docs/routing/rewrites)
-and [Render Blueprint specification](https://render.com/docs/blueprint-spec).
+## Run the release locally
+
+```powershell
+$env:MODEL_PATH = 'release/current/runtime-model.joblib'
+$env:EVALUATION_PATH = 'release/current/evaluation.json'
+$env:MODEL_MMAP = '1'
+$env:PUBLIC_FEED_KEYS = 'phishing_database'
+.\.venv\Scripts\python.exe app.py
+```
+
+`/health` returns 503 for a missing model and reports its name/version, feed freshness and rate-limit storage. `/api/models` returns comparisons only when the report matches the active model. `/evaluation` excludes stale external scores. Optional `MODEL_SHA256` verifies the individual model before loading. Invalid class order, thresholds, weights or feature schema fail startup.
+
+## Render
+
+The tested release is committed as `deployment/model-release.zip`, with its SHA256 pinned in `deployment/release.json`. The default `release.py fetch` installs it offline from the authenticated private checkout. Keep the source repository private. For a later release, replace the bundle and checksum together after validation.
+
+Alternatively, set both `RELEASE_URL` (HTTPS) and `RELEASE_SHA256` to download a trusted external archive. Signed URLs belong in environment secrets. Configuring only one value fails the build.
+
+The Blueprint installs locked dependencies, verifies the archive and each member, and sets both `MODEL_PATH` and `EVALUATION_PATH`. Missing or altered releases fail the build. Waitress listens on `0.0.0.0:$PORT`. Public feeds refresh at runtime; failed downloads remain visible without blocking the build.
+
+Set `FRONTEND_ORIGINS` to exact trusted origins, comma-separated without wildcards. Render's hostname is trusted automatically. Configure `RATELIMIT_STORAGE_URI` with Redis before scaling beyond one process/instance. Optional `WEB_RISK_API_KEY` belongs only on the backend; each lookup still needs consent.
+
+Production configuration enables only `phishing_database`. OpenPhish Community is personal/academic noncommercial as documented in README; enable it for client operations only with an appropriate licensed arrangement. Preserve the Phishing.Database license with downloaded snapshots.
+
+The free plan remains configured. Memory, cold starts, throughput, shared rate limits and feed persistence still need verification on the actual host. Local tests do not establish Linux capacity.
+
+## Docker
+
+After building `release/current`:
+
+```powershell
+docker build -t linkguard:phase1 .
+docker run --rm -p 5000:5000 --env-file .env linkguard:phase1
+```
+
+The image verifies the release, includes OpenMP for boosted models, runs as a non-root user and has an HTTP health check. Use a real `.env` with `HOST=0.0.0.0`, trusted hosts and deployment settings; it is excluded from the image. Docker validation requires a running Docker engine.
+
+## Vercel frontend
+
+Use project root `frontend`, output directory `dist`, and configure routing before deploying:
+
+```powershell
+cd frontend
+$env:BACKEND_URL = 'https://your-service.onrender.com'
+node configure-vercel.mjs
+npm ci
+npm run check
+npm run build
+```
+
+Commit generated `vercel.json` when changing hosts. It proxies `/api/*` and sets security headers. Update Render's exact frontend-origin allowlist.
+
+Set `LINKGUARD_BASE_URL` to the deployed frontend before `npm test` for live browser checks. Verify health, prediction through the real proxy, mobile layout, JSON download and rejection of unrelated origins. Keep URL request bodies out of infrastructure access logs.
+
+## Rollback and release status
+
+Redeploy the previous code revision and its bundled release, or its retained external release URL and checksum. Update model and evaluation paths together and restart workers. Local backups are in `artifacts/<run-id>/previous-release/`. Health keeps `production_validated=false` until independent future-time mixed-class validation exists.
+
+Phase 2 redesign is deferred until the client supplies the reference and preferred resource.

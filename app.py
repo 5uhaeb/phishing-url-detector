@@ -16,6 +16,7 @@ from flask_limiter.util import get_remote_address
 from detector import FEATURE_NAMES, analyze
 from reputation import ReputationClient, combine_evidence
 from feeds import FeedStore
+from model_contract import validate_artifact
 
 ROOT = Path(__file__).resolve().parent
 app = Flask(__name__)
@@ -37,10 +38,14 @@ reputation_client = ReputationClient()
 feed_store = FeedStore()
 artifact = None
 model_path = Path(os.getenv('MODEL_PATH', str(ROOT / 'model.joblib')))
+report_path = Path(os.getenv('EVALUATION_PATH', str(ROOT / 'evaluation.json')))
 if model_path.exists():
-    artifact = joblib.load(model_path, mmap_mode='r' if os.getenv('MODEL_MMAP') == '1' else None)
-    if artifact.get('features') != list(FEATURE_NAMES):
-        raise RuntimeError('Model feature schema changed. Run train.py again.')
+    expected_checksum = os.getenv('MODEL_SHA256')
+    if expected_checksum:
+        from release import sha256
+        if sha256(model_path) != expected_checksum.lower():
+            raise RuntimeError('Model checksum mismatch.')
+    artifact = validate_artifact(joblib.load(model_path, mmap_mode='r' if os.getenv('MODEL_MMAP') == '1' else None))
 
 
 @app.after_request
@@ -103,7 +108,8 @@ def page_state():
 
 def read_report(filename):
     try:
-        report = json.loads((ROOT / filename).read_text(encoding='utf-8'))
+        path = report_path if filename == 'evaluation.json' else ROOT / filename
+        report = json.loads(path.read_text(encoding='utf-8'))
         return report if isinstance(report, dict) else {}
     except (OSError, ValueError):
         return {}
@@ -164,6 +170,19 @@ def api_status():
                    public_feeds=feed_store.status())
 
 
+@app.get('/api/models')
+def api_models():
+    report = read_report('evaluation.json')
+    if not artifact or report.get('trained_at') != artifact['trained_at'] or not report.get('models'):
+        return jsonify(error='No comparison report for the active model.'), 503
+    return jsonify(model_version=artifact['trained_at'], selected_model=report['selected_model'],
+                   selection_method=report['methodology']['model_selection'],
+                   models={name: dict(test_results=result['test_results'],
+                                      validation_results=result['validation_results'],
+                                      probabilistic_metrics=result['probabilistic_metrics'])
+                           for name, result in report['models'].items()})
+
+
 @app.post('/report')
 @analysis_limit
 def download_report():
@@ -192,13 +211,18 @@ def health():
                    public_feeds=feed_store.status(),
                    reputation='configured' if reputation_client.api_key else 'not_configured',
                    rate_limit_storage='shared' if os.getenv('RATELIMIT_STORAGE_URI', 'memory://') != 'memory://'
-                   else 'single_process_memory', production_validated=False), 200 if artifact else 503
+                   else 'single_process_memory', production_validated=False,
+                   model_name=artifact.get('model_name', 'Random Forest') if artifact else None,
+                   model_version=artifact['trained_at'] if artifact else None), 200 if artifact else 503
 
 
 @app.get('/evaluation')
 def evaluation_report():
-    response = jsonify(model=read_report('evaluation.json'),
-                       independent_domains=read_report('external-evaluation.json'),
+    report = read_report('evaluation.json')
+    external = read_report('external-evaluation.json')
+    version = artifact['trained_at'] if artifact else None
+    response = jsonify(model=report if version and report.get('trained_at') == version else {},
+                       independent_domains=external if version and external.get('model_version') == version else {},
                        paper_context=read_report('benchmark-results.json'))
     response.headers['Content-Disposition'] = 'attachment; filename="evaluation-results.json"'
     return response
@@ -211,6 +235,14 @@ def too_many_requests(error):
         return jsonify(error=message), 429
     return render_template('index.html', result=None, error=message, url='',
                            model_ready=artifact is not None), 429
+
+
+@app.errorhandler(500)
+def unexpected_error(error):
+    if request.path.startswith('/api/'):
+        return jsonify(error='Analysis is temporarily unavailable. Please try again.'), 500
+    return render_template('index.html', result=None, error='Analysis is temporarily unavailable. Please try again.',
+                           url='', model_ready=artifact is not None), 500
 
 
 if __name__ == '__main__':

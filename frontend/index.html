@@ -36,7 +36,7 @@
       <p id="feed-message" class="hint"></p><p id="reputation-message" class="hint" hidden></p>
       <h2>Warning signals</h2><ul id="indicators"></ul>
       <button id="download-button" class="secondary" type="button">Download this result (JSON)</button>
-      <details><summary>How to read your result</summary><p>A fresh exact URL match in a public phishing feed takes priority. Otherwise, the combined index uses 80% model score and 20% rule score. It is not a probability or a safety guarantee. Low predicted risk does not prove a link is safe.</p><p>The model was calibrated on historical data and may miss new attacks. Rules describe warning signals, not individual explanations of the model prediction.</p></details>
+      <details><summary>How to read your result</summary><p>A fresh exact URL match in a public phishing feed takes priority. Otherwise, the local index uses the model share shown in the results, with the remaining share from security rules. It is not a probability or a safety guarantee. Low predicted risk does not prove a link is safe.</p><p>The model was calibrated on historical data and may miss new attacks. Rules describe warning signals, not individual explanations of the model prediction.</p></details>
       <details><summary>Extracted URL features</summary><table><thead><tr><th scope="col">Feature</th><th scope="col">Value</th></tr></thead><tbody id="features"></tbody></table></details>
     </section>
     <div class="steps" aria-label="How the check works">

@@ -7,3 +7,5 @@ requests>=2.32,<3
 idna>=3.7,<4
 waitress>=3,<4
 Flask-Limiter[redis]>=4,<5
+xgboost>=3.1,<4
+lightgbm>=4.6,<5

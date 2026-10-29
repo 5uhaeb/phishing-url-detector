@@ -3,7 +3,7 @@ services:
     name: linkguard-api
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt && python train.py --download && python prepare_runtime.py && python feeds.py
+    buildCommand: pip install -r requirements.txt -r dependencies.lock.txt && python release.py fetch
     startCommand: python app.py
     healthCheckPath: /health
     envVars:
@@ -12,10 +12,14 @@ services:
       - key: HOST
         value: 0.0.0.0
       - key: MODEL_PATH
-        value: runtime-model.joblib
+        value: release/current/runtime-model.joblib
+      - key: EVALUATION_PATH
+        value: release/current/evaluation.json
       - key: MODEL_MMAP
         value: "1"
       - key: FRONTEND_ORIGINS
         sync: false
       - key: WEB_CONCURRENCY
         value: 1
+      - key: PUBLIC_FEED_KEYS
+        value: phishing_database

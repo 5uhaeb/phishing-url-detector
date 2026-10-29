@@ -74,7 +74,7 @@ def evaluate(csv=None, limit=500):
         matrix, y = np.array(vectors, dtype=float), np.array(targets)
         probability = artifact['model'].predict_proba(matrix)[:, list(artifact['model'].classes_).index(1)]
         rules = np.array([evaluate_rules(dict(zip(FEATURE_NAMES, row)))[0] for row in matrix])
-        predictions = hybrid_score(probability, rules) >= artifact['threshold']
+        predictions = hybrid_score(probability, rules, artifact.get('model_weight', .8)) >= artifact['threshold']
         results = metrics(y, predictions)
         if len(set(y)) == 1:
             # Do not emit misleading perfect precision/F1/accuracy from phishing-only rows.

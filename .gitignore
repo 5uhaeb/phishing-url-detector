@@ -4,7 +4,6 @@ data/
 model.joblib
 runtime-model.joblib
 evaluation.json
-dependencies.lock.txt
 external-evaluation.json
 .env
 .env.*
@@ -14,3 +13,6 @@ node_modules/
 frontend/dist/
 test-results/
 playwright-report/
+
+artifacts/
+release/

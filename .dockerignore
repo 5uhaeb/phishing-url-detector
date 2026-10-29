@@ -1,0 +1,17 @@
+.git
+.venv
+__pycache__
+data
+artifacts
+node_modules
+frontend
+test-results
+playwright-report
+.env
+.env.*
+!.env.example
+*.joblib
+evaluation.json
+external-evaluation.json
+release/*.zip
+!release/current/runtime-model.joblib
