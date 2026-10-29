@@ -1,0 +1,16 @@
+{
+  "models": {
+    "random_forest": {
+      "file": "random_forest.joblib",
+      "sha256": "0fd03d6723acc448c9c1abccf3b24ac849fd6bef613a9fea2b58b082b662d671"
+    },
+    "xgboost": {
+      "file": "xgboost.joblib",
+      "sha256": "08316e688c66e99e2a458802030487a26803f784ba5635b3f05872ed3177c2b9"
+    },
+    "lightgbm": {
+      "file": "lightgbm.joblib",
+      "sha256": "b636b6883c7a980d1e7aabe646cdb3aec13c907353d8194e322d764d0b4fd21e"
+    }
+  }
+}

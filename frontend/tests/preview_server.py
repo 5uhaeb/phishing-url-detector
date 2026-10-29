@@ -1,17 +1,30 @@
-"""Local frontend + real API server for browser integration tests."""
+"""Start the separate backend and frontend for browser tests."""
+import os
+import subprocess
 import sys
 from pathlib import Path
+from time import monotonic, sleep
+from urllib.error import URLError
+from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
-
-from flask import send_from_directory
-from werkzeug.serving import make_server
-from app import app
-
-app.view_functions['index'] = lambda: send_from_directory(ROOT / 'frontend', 'index.html')
-app.add_url_rule('/app.js', 'frontend_script', lambda: send_from_directory(ROOT / 'frontend', 'app.js'))
-app.add_url_rule('/style.css', 'frontend_style', lambda: send_from_directory(ROOT / 'static', 'style.css'))
-
-if __name__ == '__main__':
-    make_server('127.0.0.1', 5187, app, threaded=True).serve_forever()
+environment = dict(os.environ, HOST='127.0.0.1', PORT='5188',
+                   FRONTEND_ORIGINS='http://127.0.0.1:5187', BACKEND_URL='http://127.0.0.1:5188', REFRESH_FEEDS='0')
+flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+backend = subprocess.Popen([sys.executable, 'main.py'], cwd=ROOT / 'backend', env=environment, creationflags=flags)
+try:
+    deadline = monotonic() + 60
+    while True:
+        if backend.poll() is not None:
+            raise RuntimeError('Backend exited before it was ready.')
+        try:
+            with urlopen('http://127.0.0.1:5188/health', timeout=1):
+                break
+        except URLError:
+            if monotonic() >= deadline:
+                raise RuntimeError('Backend did not become ready.')
+            sleep(.2)
+    subprocess.run([sys.executable, 'dev_server.py'], cwd=ROOT / 'frontend', env=environment, check=True)
+finally:
+    backend.terminate()
+    backend.wait(timeout=10)

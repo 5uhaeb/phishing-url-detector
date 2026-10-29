@@ -1,6 +1,5 @@
-"""Compare Random Forest, XGBoost and LightGBM using domain-disjoint raw URLs."""
+"""Download, clean and extract the two training datasets."""
 
-import argparse
 import hashlib
 import io
 from pathlib import Path
@@ -11,7 +10,7 @@ import pandas as pd
 import requests
 from sklearn.model_selection import train_test_split
 
-from detector import FEATURE_NAMES, extract_features
+from detector import extract_features
 
 ROOT = Path(__file__).resolve().parent
 DATA_URL = 'https://archive.ics.uci.edu/static/public/967/phiusiil+phishing+url+dataset.zip'
@@ -49,7 +48,6 @@ def download():
         DATA_FILE.write_bytes(zipped.read(names[0]))
 
 
-from training_metrics import metrics, tune_threshold
 
 
 def load_dataset(args):
@@ -115,35 +113,3 @@ def load_dataset(args):
     clean = clean[~clean.url.isin(normalized_conflicts[normalized_conflicts > 1].index)]
     clean = clean.drop_duplicates('url').reset_index(drop=True)
     return clean, provenance, raw_count, invalid, path
-
-
-def train(args):
-    from training_pipeline import run_comparison
-    return run_comparison(args, load_dataset(args))
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--download', action='store_true')
-    parser.add_argument('--jobs', type=int, default=4, help='Bound training CPU use; default 4')
-    parser.add_argument('--output-dir', type=Path, default=ROOT / 'artifacts')
-    parser.add_argument('--no-promote', action='store_true', help='Write experiment artifacts without replacing the local serving model')
-    parser.add_argument('--csv', type=Path, help='CSV with URL,label columns using UCI label meanings')
-    parser.add_argument('--max-rows', type=int, default=0, help='Default 0: all rows; set a limit for quick experiments')
-    parser.add_argument('--max-fpr', type=float, default=.01, help='Validation false-positive-rate target, default 0.01')
-    parser.add_argument('--additional-data', type=Path, default=ADDITIONAL_FILE)
-    parser.add_argument('--additional-limit', type=int, default=200000, help='Stratified supplementary sample; 0=all')
-    parser.add_argument('--no-additional-data', action='store_true', help='Reproduce the UCI-only baseline (known homepage bias)')
-    arguments = parser.parse_args()
-    if arguments.jobs < 1:
-        parser.error('--jobs must be positive')
-    if arguments.max_rows < 0 or 0 < arguments.max_rows < 100:
-        parser.error('--max-rows must be 0 or at least 100')
-    if not 0 < arguments.max_fpr < 1:
-        parser.error('--max-fpr must be between 0 and 1')
-    if arguments.additional_limit < 0 or 0 < arguments.additional_limit < 100:
-        parser.error('--additional-limit must be 0 or at least 100')
-    try:
-        train(arguments)
-    except (ValueError, OSError) as exc:
-        parser.exit(1, f'Training failed: {exc}\n')
