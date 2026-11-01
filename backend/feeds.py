@@ -10,7 +10,6 @@ from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 import requests
-import os
 
 from detector import parse_url
 

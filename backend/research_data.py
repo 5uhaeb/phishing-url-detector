@@ -6,6 +6,7 @@ Optional dependency: pyarrow (install separately for research, not serving).
 import argparse
 import io
 import json
+import re
 from pathlib import Path
 import sys
 from urllib.parse import quote
@@ -68,14 +69,20 @@ class RangeReader(io.RawIOBase):
         return len(content)
 
 
-def manifest():
+def manifest(revision=None):
+    if revision is not None and not re.fullmatch(r'[0-9a-f]{40}', revision):
+        raise ValueError('Use a full 40-character dataset revision SHA.')
     DATA.mkdir(parents=True, exist_ok=True)
     path = DATA / 'upstream_manifest.json'
     if path.exists():
-        return json.loads(path.read_text(encoding='utf-8'))
-    response = requests.get(f'https://huggingface.co/api/datasets/{REPO}', timeout=45)
-    response.raise_for_status()
-    revision = response.json()['sha']
+        cached = json.loads(path.read_text(encoding='utf-8'))
+        if revision is not None and cached['revision'] != revision:
+            raise ValueError('Cached metadata has a different dataset revision; use a separate research cache.')
+        return cached
+    if revision is None:
+        response = requests.get(f'https://huggingface.co/api/datasets/{REPO}', timeout=45)
+        response.raise_for_status()
+        revision = response.json()['sha']
     response = requests.get(f'https://huggingface.co/api/datasets/{REPO}/tree/{revision}/data?limit=1000', timeout=45)
     response.raise_for_status()
     files = [entry for entry in response.json() if entry['path'].endswith('.parquet')]
@@ -88,9 +95,9 @@ def manifest():
     return value
 
 
-def acquire(split, limit=0):
+def acquire(split, limit=0, revision=None):
     import pyarrow.parquet as pq
-    info = manifest()
+    info = manifest(revision)
     entries = sorted((entry for entry in info['files'] if entry['path'].startswith(f'data/{split}-')), key=lambda entry: entry['path'])
     if limit:
         entries = entries[:limit]
@@ -122,5 +129,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--split', choices=['train', 'test'], required=True)
     parser.add_argument('--limit', type=int, default=0)
+    parser.add_argument('--revision', help='Pin a full dataset revision SHA for exact reproduction')
     args = parser.parse_args()
-    acquire(args.split, args.limit)
+    acquire(args.split, args.limit, args.revision)

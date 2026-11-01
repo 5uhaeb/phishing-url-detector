@@ -113,6 +113,34 @@ def extract_features(value):
     return original_url, dict(zip(FEATURE_NAMES, values)), group
 
 
+def rule_evidence(features):
+    """Explain existing rule weights without changing their calibrated policy."""
+    definitions = (
+        ('ip_hostname', 'medium', 'ip_hostname', bool(features['ip_hostname']), .35, 'Hostname is an IP address.'),
+        ('authority_at', 'medium', 'ats', bool(features['ats']), .35, 'URL contains @; inspect the actual destination.'),
+        ('deep_subdomain', 'low', 'subdomains', features['subdomains'] >= 3, .20, 'Hostname has three or more subdomains.'),
+        ('long_url', 'low', 'url_length', features['url_length'] > 150, .15, 'URL is longer than 150 characters.'),
+        ('many_hyphens', 'low', 'hyphens', features['hyphens'] >= 4, .10, 'URL contains four or more hyphens.'),
+        ('digit_ratio', 'low', 'digit_ratio', features['digit_ratio'] > .25, .10, 'More than a quarter of the URL is digits.'),
+        ('auth_keywords', 'low', 'keyword_count', features['keyword_count'] >= 2, .15, 'URL contains multiple account/security keywords.'),
+        ('http_transport', 'low', 'https', not features['https'], .10, 'URL uses HTTP rather than HTTPS.'),
+        ('idna_hostname', 'low', 'punycode', bool(features['punycode']), .15, 'Hostname uses punycode; inspect possible lookalike text.'),
+        ('percent_encoding', 'low', 'percent_signs', features['percent_signs'] >= 4, .10, 'URL contains substantial percent encoding.'),
+        ('opaque_path', 'low', 'opaque_path_token', bool(features.get('opaque_path_token', 0)), .15, 'Path contains a long opaque token; legitimate session links can also contain these.'),
+        ('brand_subdomain', 'medium', 'brand_in_subdomain', bool(features.get('brand_in_subdomain', 0)), .25, 'A familiar brand appears in a subdomain rather than the registered domain.'),
+        ('embedded_destination', 'low', 'encoded_destination', bool(features.get('encoded_destination', 0)), .10, 'Path or query contains another URL; inspect the final destination independently.'),
+    )
+    remaining, result = 1., []
+    for identifier, severity, feature, active, weight, description in definitions:
+        if active:
+            contribution = min(weight, max(0., remaining))
+            remaining -= contribution
+            result.append(dict(id=identifier, severity=severity, description=description,
+                               evidence={feature: features.get(feature, 0)}, weight=weight,
+                               contribution=contribution))
+    return result
+
+
 def evaluate_rules(features):
     checks = (
         (features['ip_hostname'], .35, 'Hostname is an IP address.'),
@@ -150,6 +178,9 @@ def analyze(value, artifact):
     phishing = score >= threshold
     risk = 'High' if phishing else ('Medium' if score >= min(.3, threshold * .6)
                                    or rule_score >= .4 else 'Low')
+    explanations = rule_evidence(features)
+    for rule in explanations:
+        rule['final_index_contribution'] = (1-artifact.get('model_weight', .8))*rule['contribution']
     return dict(url=url, prediction='Potential phishing' if phishing else 'Potentially legitimate',
                 risk=risk, model_score=round(probability * 100, 1),
                 rule_score=round(rule_score * 100, 1), hybrid_score=round(score * 100, 1),
@@ -158,4 +189,7 @@ def analyze(value, artifact):
                 model_name=artifact.get('model_name', 'Random Forest'),
                 model_weight=artifact.get('model_weight', .8),
                 features=features, model_version=artifact['trained_at'],
+                local_is_phishing=bool(phishing),
+                review_required=bool(abs(score-threshold) <= .1 or risk == 'Medium'),
+                rule_evidence=explanations,
                 calibrated=artifact.get('calibrated', False))

@@ -115,6 +115,66 @@ Today's capstone work and limitations are summarized in
 Reusable research scripts are in `backend/research_*.py`; generated datasets,
 model candidates and intermediate reports are excluded from Git.
 
+## Phishing-specific research (1 November 2026)
+
+The latest experiment improves **actual phishing detection**, keeping malware
+labels separate and retaining Random Forest as the capstone baseline. On the
+same 48,406 unseen-domain URLs, the frozen XGBoost/character candidate improved
+phishing recall from **55.80% to 76.34%**, F1 from **68.91% to 85.08%**, and FPR
+from **3.07% to 1.55%**. It did **not** meet the predeclared 1% FPR release gate;
+the existing production model files are unchanged. These scores use a new
+cohort and must not be compared directly with the historical Kaggle aggregate.
+
+- [Repository audit](docs/REPOSITORY_AUDIT.md): concrete issues and code corrections.
+- [Dataset audit](docs/DATASET_AUDIT.md): typed labels, provenance and leakage checks.
+- [Model comparison](docs/MODEL_COMPARISON.md): RF, XGBoost, LightGBM, character models and ensembles.
+- [Evaluation report](docs/EVALUATION_REPORT.md): fresh phishing, malware, uncertainty, runtime and rejection decision.
+- [Capstone alignment](docs/CAPSTONE_ALIGNMENT.md): requirements in the supplied abstract.
+- [Consolidated results](docs/capstone/linkguard_final_results_2026-11-01.csv): historical and current cohorts explicitly identified; values are fractions.
+
+The API now uses its full-precision classification decision; rounded display
+scores cannot promote a URL across the threshold. `rule_evidence` adds stable
+rule identifiers, severity, observed features and bounded index contributions.
+Existing response fields, consent behavior, risk states and deployment layout
+are preserved. The combined index remains a warning score, not a calibrated
+phishing probability.
+
+### Reproduce the research
+
+Use a fresh checkout/cache for a new independent experiment. Install optional
+local research dependencies (they are not added to Render's serving install):
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r backend\requirements-research.txt
+.\.venv\Scripts\python.exe backend\research_sources.py --directory backend\data\capstone_run
+.\.venv\Scripts\python.exe backend\research_data.py --split train --revision eca603e0ecd4f698f8d4d226c088659e72681239
+```
+
+Use the publisher raw `additional-urls.json`, and place the Kaggle export at
+`backend/data/kaggle-real-world-phishing/phishing_url_dataset_unique.csv`. The
+original combined CSV is needed only to exclude domains seen by the legacy
+model. It is not added to the new training mixture. Adjust these local paths:
+
+```powershell
+.\.venv\Scripts\python.exe backend\phishing_benchmark.py --stage baseline --source-directory backend\data --combined C:\datasets\combined_phishing_dataset.csv
+.\.venv\Scripts\python.exe backend\phishing_benchmark.py --stage prepare --source-directory backend\data
+.\.venv\Scripts\python.exe backend\phishing_benchmark.py --stage train --output backend\training_output\new_phishing_run
+.\.venv\Scripts\python.exe backend\phishing_benchmark.py --stage final --output backend\training_output\new_phishing_run --combined C:\datasets\combined_phishing_dataset.csv
+.\.venv\Scripts\python.exe backend\phishing_benchmark.py --stage runtime --output backend\training_output\new_phishing_run
+.\.venv\Scripts\python.exe backend\research_runtime.py --output backend\training_output\new_phishing_run
+```
+
+The source acquisition script refuses to overwrite a reserved snapshot. Training
+freezes all candidates, thresholds and source/model/data hashes before final
+scoring; the final stage refuses reuse. Fitting uses a source/type-stratified
+sample of at most 180,000 rows; character vocabulary uses at most 120,000.
+No HTML or suspicious destinations are fetched. Threat-feed snapshots, trained
+candidates and per-URL predictions remain ignored local artifacts; publisher
+terms still apply. `research_documentation.py` regenerates this capstone run's
+tables from saved results without tuning; it expects its matching baseline,
+timing and protocol artifacts. Historical final cohorts cannot be reused to
+tune a new candidate while retaining an independent-test claim.
+
 ## Deployment
 
 Vercel project root: `frontend`; build: `node build.mjs`; output: `dist`.

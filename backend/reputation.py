@@ -106,8 +106,10 @@ def combine_evidence(local, reputation):
         'unavailable': 'External service unavailable',
         'skipped': 'External lookup skipped',
     }.get(reputation['status'], 'No independent verification')
-    suspicious = local['hybrid_score'] >= local['threshold']
-    near_boundary = abs(local['hybrid_score'] - local['threshold']) <= 10
+    # Display values are rounded. New predictions carry the original decision;
+    # retain fallback support for older serialized reports and API fixtures.
+    suspicious = local.get('local_is_phishing', local['hybrid_score'] >= local['threshold'])
+    near_boundary = local.get('review_required', abs(local['hybrid_score'] - local['threshold']) <= 10)
     if reputation['status'] == 'match':
         result.update(prediction='Known phishing threat' if 'SOCIAL_ENGINEERING' in reputation['threats']
                       else 'Known malicious URL', risk='High', evidence='Threat-list match',
