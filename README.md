@@ -84,6 +84,37 @@ It saves all three models, checksums, split indices, evaluation JSON and compari
 To use a new training run, replace the model files, manifest and evaluation in `backend/models` together and restart.
 Existing trained models are preserved; reorganizing the code does not retrain them.
 
+## Research audit
+
+The supplied development corpora can be audited without changing the frozen model or
+threshold:
+
+```powershell
+.\.venv\Scripts\python.exe backend\research_audit.py `
+  --combined C:\Users\shaik\Downloads\LinkGuard-Combined-Dataset\combined_phishing_dataset.csv `
+  --external C:\Users\shaik\Downloads\phishing-url-detector\data\kaggle-real-world-phishing\phishing_url_dataset_unique.csv `
+  --combined-split C:\Users\shaik\Downloads\Codex\phishing-url-detector-archive-2026-10-29\artifacts\20261029T154217299203Z\split-indices.npz `
+  --combined-fingerprint b41677b5073aa2f2125130a6c31ebd4d3250285ce76a84e3c7468a036423e856 `
+  --model backend\models\xgboost.joblib `
+  --output backend\audit_output_corrected
+```
+
+The audit verifies the combined corpus fingerprint before evaluating only its held-out
+test indices, and removes Kaggle records whose registrable domains occur anywhere in
+the combined corpus. It writes hashes, invalid/duplicate/conflict counts, URL-style
+profiles, source/type slices, domain-cluster bootstrap 95% intervals, and frozen-model
+feature-ablation sensitivity. Raw-model and final-system-score AUCs are reported
+separately.
+Kaggle `urlhaus` positives are reported as malware and must not be called phishing
+recall. These files are not an untouched final test: timestamps and independent
+provenance collection are still required before a production claim.
+
+Today's capstone work and limitations are summarized in
+[the 1 November 2026 note](docs/capstone/2026-11-01.md), with
+[one consolidated results CSV](docs/capstone/linkguard_final_results_2026-11-01.csv).
+Reusable research scripts are in `backend/research_*.py`; generated datasets,
+model candidates and intermediate reports are excluded from Git.
+
 ## Deployment
 
 Vercel project root: `frontend`; build: `node build.mjs`; output: `dist`.

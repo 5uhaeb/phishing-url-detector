@@ -6,6 +6,7 @@ __pycache__/
 !.env.example
 backend/data/
 backend/training_output/
+backend/audit_output*/
 frontend/node_modules/
 frontend/dist/
 frontend/.vercel/
