@@ -177,6 +177,9 @@ tune a new candidate while retaining an independent-test claim.
 
 ## Deployment
 
+The Render API patch was redeployed and verified on 1 November 2026; the original
+XGBoost model remains active. See [deployment status and final scores](docs/DEPLOYMENT_STATUS.md).
+
 Vercel project root: `frontend`; build: `node build.mjs`; output: `dist`.
 Render service root: `backend`; build: `pip install -r requirements.txt`; start: `python main.py`.
 The checked-in `render.yaml` describes this layout. For an existing Render service, update its root,

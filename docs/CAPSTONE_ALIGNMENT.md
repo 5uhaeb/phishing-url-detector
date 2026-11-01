@@ -13,7 +13,7 @@ The implementation retains its architecture and educational scope.
 | Hybrid prediction, risk and explanations | ML/rule risk index, full-precision local decision, review state and optional fresh exact feed evidence. The hybrid index is not a calibrated probability. |
 | Accuracy, precision, recall, F1 and confusion matrix | Frozen validation/test protocol with typed labels, separate phishing/malware/source cohorts, domain bootstrap intervals and explicit test limitations. |
 | Training time and prediction latency | Per-model timing, compact-candidate memory/load/latency measurement and local full-API timing. Historical scores are distinguished from new measurements. |
-| Web deployment | Existing Vercel frontend and Render backend configuration retained. A locally tested patch is not described as deployed unless a release actually succeeds and is verified. |
+| Web deployment | Existing Vercel frontend and Render backend retained. The Render API patch was released and verified on 1 November 2026; all seven browser tests passed against production. See `DEPLOYMENT_STATUS.md`. The research model was not deployed. |
 
 XGBoost is the existing production classifier; Random Forest remains the
 abstract-required baseline. LightGBM, character models and ensembles are

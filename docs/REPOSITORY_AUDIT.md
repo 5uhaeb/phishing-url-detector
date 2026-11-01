@@ -28,3 +28,8 @@ Remaining research limits include source/label confounding, no guarantee of
 campaign-disjoint data, no broad recent independent benign ground truth, and
 feed reports that may contain errors. Fitting on current feed labels and then
 reporting exact matches from that same feed is circular, not model improvement.
+
+Deployment follow-up on 1 November: the Render root/build/start settings were
+corrected, the API patch was released successfully, and its live responses plus
+all seven production browser tests were verified. See
+[DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md). The research model was not promoted.

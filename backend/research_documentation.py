@@ -33,6 +33,13 @@ def generate(output):
     audit=json.loads((ROOT/'backend/data/capstone_run/dataset_audit.json').read_text())
     historical=json.loads((ROOT/'backend/data/capstone_run/historical_reproduction.json').read_text())
     live=json.loads((output/'live_verification.json').read_text()) if (output/'live_verification.json').exists() else {}
+    deployment_note=(
+        'The tested API patch has now been released on Render and verified through the Vercel frontend. '
+        'The original XGBoost model remains selected; no research candidate was deployed.'
+        if live.get('decision_patch_visible') else
+        'Pushing GitHub code is not a verified Render release. The remaining deployment step is to release '
+        'the tested API patch with the documented backend/ root and python main.py start command, retaining '
+        'the old model, then recheck prediction fields, origins, memory and feed startup.')
     final=pd.read_csv(output/'final_scores.csv');validation=pd.read_csv(output/'validation_scores.csv')
     winner=protocol['winner'];candidate=winner['model'];cohort='paired_fresh_phishing_reserved_benign'
     primary=final[(final.cohort==cohort)&final.selected_on_validation]
@@ -247,16 +254,13 @@ full-API measurements of a deployed candidate.
 predeclared 1% gate. All other declared gates passed. No alternative final-test
 row is promoted. The previous production models are unchanged and available
 for rollback; only decision consistency and structured rule explanations were
-integrated into the local API. No live deployment is claimed.
+integrated into the {'live' if live.get('decision_patch_visible') else 'local'} API.
 
 Final post-push service verification: health HTTP {live.get('health_status','not checked')},
 prediction HTTP {live.get('prediction_status','not checked')}; active model remains
 `{live.get('model_version','not checked')}`. The decision patch is
 {'visible' if live.get('decision_patch_visible') else 'not verified as active'}
-in the live response. Pushing GitHub code is not a verified Render release.
-The remaining deployment step is to release the tested API patch with the
-documented `backend/` root and `python main.py` start command, retaining the old
-model, then recheck prediction fields, origins, memory and feed startup.
+in the live response. {deployment_note}
 
 Overall accuracy, F1, phishing recall and unseen-domain recall do not meet the
 95% targets. Further work needs independently adjudicated recent benign deep

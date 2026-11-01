@@ -184,16 +184,13 @@ full-API measurements of a deployed candidate.
 predeclared 1% gate. All other declared gates passed. No alternative final-test
 row is promoted. The previous production models are unchanged and available
 for rollback; only decision consistency and structured rule explanations were
-integrated into the local API. No live deployment is claimed.
+integrated into the live API.
 
 Final post-push service verification: health HTTP 200,
 prediction HTTP 200; active model remains
 `2026-10-29T15:42:17.299185+00:00`. The decision patch is
-not verified as active
-in the live response. Pushing GitHub code is not a verified Render release.
-The remaining deployment step is to release the tested API patch with the
-documented `backend/` root and `python main.py` start command, retaining the old
-model, then recheck prediction fields, origins, memory and feed startup.
+visible
+in the live response. The tested API patch has now been released on Render and verified through the Vercel frontend. The original XGBoost model remains selected; no research candidate was deployed.
 
 Overall accuracy, F1, phishing recall and unseen-domain recall do not meet the
 95% targets. Further work needs independently adjudicated recent benign deep
