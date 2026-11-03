@@ -1,6 +1,0 @@
--r requirements.txt
-# Optional local acquisition, publication plots and memory measurements.
-# Render installs requirements.txt only.
-pyarrow==26.0.0
-matplotlib==3.10.8
-psutil==7.2.2

@@ -1,0 +1,2 @@
+# Optional report generation; not installed by the product launcher or Render.
+matplotlib==3.10.8

@@ -12,3 +12,4 @@ frontend/dist/
 frontend/.vercel/
 frontend/test-results/
 frontend/playwright-report/
+dist/

@@ -1,7 +1,7 @@
 """Binary metrics and exact validation-only operating point selection."""
 import numpy as np
 from sklearn.metrics import (accuracy_score, confusion_matrix,
-                             precision_recall_fscore_support, roc_curve)
+                             precision_recall_fscore_support, precision_recall_curve, roc_curve)
 
 
 def metrics(labels, predictions):
@@ -28,3 +28,14 @@ def tune_threshold(labels, scores, max_fpr=.01):
     feasible = np.flatnonzero(fpr <= max_fpr)
     best = max(feasible, key=lambda i: (recall[i], -fpr[i], -abs(thresholds[i] - .5)))
     return float(thresholds[best])
+
+
+def f1_threshold(labels, scores):
+    labels,scores=np.asarray(labels),np.asarray(scores,dtype=float)
+    if (labels.ndim!=1 or scores.shape!=labels.shape or set(np.unique(labels))!={0,1}
+            or not np.isfinite(scores).all() or np.any((scores<0)|(scores>1))):
+        raise ValueError('Threshold selection needs both classes and finite scores in [0, 1].')
+    precision,recall,thresholds=precision_recall_curve(labels,scores)
+    values=np.divide(2*precision[:-1]*recall[:-1],precision[:-1]+recall[:-1],
+                     out=np.zeros(len(thresholds)),where=(precision[:-1]+recall[:-1])>0)
+    return float(thresholds[int(np.argmax(values))])

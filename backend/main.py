@@ -95,6 +95,10 @@ def response_headers(response):
     response.headers.update({'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
                              'Referrer-Policy': 'same-origin', 'X-Frame-Options': 'DENY',
                              'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'"})
+    if app.config.get('SERVE_LOCAL_FRONTEND') and request.path in ('/', '/app.js', '/style.css'):
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; "
+            "img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
     return response
 
 

@@ -17,9 +17,9 @@ from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_s
 from sklearn.model_selection import GroupShuffleSplit
 from xgboost import XGBClassifier
 
-from dataset import ROOT, ADDITIONAL_FILE, load_dataset
+from dataset import ROOT, load_dataset
 from detector import FEATURE_NAMES, evaluate_rules, hybrid_score
-from metrics import metrics, tune_threshold
+from metrics import metrics, tune_threshold, f1_threshold
 
 NAMES = {'random_forest': 'Random Forest', 'xgboost': 'XGBoost', 'lightgbm': 'LightGBM'}
 
@@ -79,7 +79,9 @@ def train_models(clean, sources, output, max_fpr=.01, jobs=4):
         weight, threshold, measured = max(policies, key=lambda item: (item[2]['recall'], item[2]['precision'], item[0]))
         artifacts[name] = dict(model=model, model_family=name, model_name=NAMES[name], features=list(FEATURE_NAMES),
                                threshold=threshold, model_weight=weight, calibrated=True, trained_at=version,
-                               model_threshold=tune_threshold(y[validation], scores, max_fpr))
+                               model_threshold=tune_threshold(y[validation], scores, max_fpr),
+                               balanced_threshold=f1_threshold(y[validation],scores),
+                               positive_class=sources[0].get('positive_class','phishing') if sources else 'phishing')
         results[name] = dict(validation_results=measured, validation_ap=float(average_precision_score(y[validation], scores)),
                               model_weight=weight, threshold=threshold)
     # Choose the winner before evaluating any held-out test predictions.
@@ -89,6 +91,8 @@ def train_models(clean, sources, output, max_fpr=.01, jobs=4):
         scores = artifact['model'].predict_proba(x[test])[:, 1]
         decisions = hybrid_score(scores, rules[test], artifact['model_weight']) >= artifact['threshold']
         results[name]['test_results'] = metrics(y[test], decisions)
+        results[name]['balanced_test_results'] = metrics(y[test], scores>=artifact['balanced_threshold'])
+        results[name]['balanced_threshold'] = artifact['balanced_threshold']
         results[name]['probabilistic_metrics'] = dict(roc_auc=float(roc_auc_score(y[test], scores)),
             average_precision=float(average_precision_score(y[test], scores)), brier_score=float(brier_score_loss(y[test], scores)))
     output.mkdir(parents=True)
@@ -99,13 +103,18 @@ def train_models(clean, sources, output, max_fpr=.01, jobs=4):
         manifest['models'][name] = dict(file=path.name, sha256=hashlib.sha256(path.read_bytes()).hexdigest())
     report = dict(trained_at=version, selected_model=winner, selected_model_name=NAMES[winner], models=results,
                   dataset=dict(sources=sources, usable_rows=len(clean)),
-                  methodology=dict(seed=42, validation_fpr_target=max_fpr, positive_class='phishing=1',
+                  methodology=dict(seed=42, validation_fpr_target=max_fpr,
+                      positive_class=(sources[0].get('positive_class','phishing') if sources else 'phishing')+'=1',
                       model_selection='validation recall, precision, average precision; test never selects winner'),
                   splits={name:dict(rows=len(indices), domains=len(set(groups[indices]))) for name, indices in splits.items()})
     for filename, value in [('manifest.json', manifest), ('evaluation.json', report)]:
         (output / filename).write_text(json.dumps(value, indent=2, allow_nan=False), encoding='utf-8')
     np.savez_compressed(output / 'split-indices.npz', **splits)
-    pd.DataFrame([dict(model=NAMES[name], **result['test_results']) for name, result in results.items()]).to_csv(
+    comparison=[]
+    for name,result in results.items():
+        comparison.append(dict(model=NAMES[name],policy='Conservative hybrid',threshold=result['threshold'],**result['test_results']))
+        comparison.append(dict(model=NAMES[name],policy='Maximum validation F1, raw ML',threshold=result['balanced_threshold'],**result['balanced_test_results']))
+    pd.DataFrame(comparison).to_csv(
         output / 'comparison.csv', index=False)
     print(f'Selected {NAMES[winner]} on validation. Models and reports saved to {output}.', flush=True)
     return report
@@ -113,17 +122,17 @@ def train_models(clean, sources, output, max_fpr=.01, jobs=4):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--download', action='store_true')
-    parser.add_argument('--csv', type=Path, help='UCI CSV: URL,label with 0=phishing and 1=legitimate')
-    parser.add_argument('--additional-data', type=Path, default=ADDITIONAL_FILE)
-    parser.add_argument('--additional-limit', type=int, default=200000)
+    parser.add_argument('--dataset',type=Path,required=True,help='CSV or JSON with url/URL/text and label')
+    parser.add_argument('--positive-label',type=int,choices=[0,1],default=1)
+    parser.add_argument('--dataset-name',default='Provided URL dataset')
+    parser.add_argument('--target-name',default='phishing',help='Meaning of the supplied positive label')
+    parser.add_argument('--infer-https',action='store_true',help='Apply https:// equally to bare URLs in either class')
     parser.add_argument('--max-rows', type=int, default=0)
     parser.add_argument('--max-fpr', type=float, default=.01)
     parser.add_argument('--jobs', type=int, default=4)
     parser.add_argument('--output', type=Path, default=ROOT / 'training_output')
     args = parser.parse_args()
-    args.no_additional_data = False  # Keep legitimate paths/queries from the second source.
-    if args.jobs < 1 or not 0 < args.max_fpr < 1 or args.max_rows < 0 or args.additional_limit < 0:
+    if args.jobs < 1 or not 0 < args.max_fpr < 1 or args.max_rows < 0:
         parser.error('Use positive jobs, nonnegative row limits and 0 < max-fpr < 1.')
     try:
         clean, sources, *_ = load_dataset(args)

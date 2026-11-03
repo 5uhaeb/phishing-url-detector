@@ -1,61 +1,121 @@
-# LinkGuard
+# LinkGuard — client delivery
 
-A phishing-link checker with a plain HTML/CSS/JavaScript frontend and a Flask backend.
-The backend examines URL text, security rules and public phishing reports without visiting submitted websites.
+A lightweight URL checker with a browser interface, Flask API, machine learning,
+security rules and optional exact-URL threat-feed matching. Submitted websites
+are never opened. Low detected risk is not a safety guarantee.
+
+**Live product:** https://phishing-url-detector-xi.vercel.app
+
+**Backend health:** https://linkguard-api-5m93.onrender.com/health
+
+## Start the exported product
+
+1. Extract the ZIP completely and install **Python 3.13**.
+2. On Windows, double-click **`START_LINKGUARD.cmd`**.
+3. The launcher prepares `.venv`, installs the pinned dependencies on first run,
+   starts the local application and opens your browser. Keep its console open;
+   close it or press Ctrl+C when finished.
+
+First setup needs internet. Later, run `START_LINKGUARD.cmd --offline` for
+model/rule analysis without feed downloads or external reputation. Cached feed
+matches, if present, still retain their freshness checks. Ordinary online mode
+refreshes public feeds in the background; URL analysis works while they load.
+
+On any supported platform, `python launcher.py` does the same setup. An available
+loopback port is selected automatically. The local app is not exposed to the LAN.
+API hosting still uses `python backend/main.py`; `render.yaml` preserves the
+existing Render layout. Vercel serves the unchanged frontend.
+
+## Client reports
+
+- [Graphical report — two-page PDF](reports/model_improvements.pdf)
+- [Presentation image](reports/model_improvements.png)
+- [Measured scores — CSV](reports/model_scores.csv)
+
+The main comparison uses **the same 48,406 test URLs from 33,285 domains absent
+from both training corpora**: 16,117 phishing and 32,289 legitimate URLs. Original
+models were re-scored with their frozen policies; improved configurations and
+thresholds were chosen on validation before final evaluation.
+
+| Model | Original phishing recall | Improved research recall | Original FPR | Improved FPR |
+|---|---:|---:|---:|---:|
+| Random Forest | 54.20% | 57.06% | 2.82% | 1.58% |
+| XGBoost | 55.80% | 64.27% | 3.07% | 1.67% |
+| LightGBM | 55.01% | 64.06% | 2.97% | 1.62% |
+
+The complementary XGBoost/character ensemble reached **76.34% phishing recall,
+85.08% F1 and 1.55% FPR**. It is a **research candidate**, not the shipped model:
+it missed the predeclared 1% false-positive release gate. The existing XGBoost
+artifact remains active. Random Forest is retained as the approved capstone
+baseline; all three preserved models and their provenance are bundled.
+
+The second report page uses **ealvaradob alone**, excluding UCI: 811,472 cleaned
+URLs, with 178,918 test URLs from 71,527 held-out domains. Balanced accuracy is
+88–89%, with 13–15% false positives. Conservative thresholds lower FPR below 1%
+but reduce positive-class recall to 45–49%. Publisher malicious labels are not
+represented as independently verified phishing-only ground truth.
+
+No UCI-only 99% shortcut result is used in this client report. The production
+32-feature extractor ignores the conventional `www` prefix. The shipped model
+does retain legacy mixed-source training, including UCI; its independent scores
+above expose its generalization limits rather than hiding them. Improved research
+models used typed PhreshPhish data, additional legitimate URLs, richer features,
+separate calibration and character patterns. Changes were assessed together;
+the report does not claim a causal gain from a single parameter.
+
+No dataset is proven bias-free, domain separation does not prove campaign
+separation, and the legitimate comparison data are historical. The reports do
+not establish 95% across all metrics. `backend/models/evaluation.json` is the
+preserved training-era regression report; it is a different cohort from the client
+CSV. The CSV includes thresholds, exact confusion counts, cohort fingerprint,
+positive-class meaning and deployment status. Percent columns use 0–100 units.
+The independent cohort is 33.3% phishing; observed precision cannot be assumed
+at ordinary browsing prevalence. Research models were frozen and evaluated on
+1 November; the original baselines were re-scored for this delivery on 3 November.
+
+Sources: [PhreshPhish](https://huggingface.co/datasets/phreshphish/phreshphish),
+[ealvaradob](https://huggingface.co/datasets/ealvaradob/phishing-dataset),
+[OpenPhish](https://github.com/openphish/public_feed), and
+[PhishTank](https://phishtank.net/developer_info.php). Publisher terms apply;
+raw feed URLs are not redistributed in this delivery.
+
+## Minimal repository
 
 ```text
-frontend/
-  index.html        Page
-  style.css         Styles
-  app.js            API calls and results
-  dev_server.py     Local frontend server and API proxy
-  tests/            Browser tests
-backend/
-  main.py           Flask API and server entry point
-  detector.py       URL validation, features, rules and model prediction
-  feeds.py          Local public-feed matching
-  reputation.py     Optional consent-based Google Web Risk lookup
-  train.py          Train and compare all three models
-  dataset.py        Download and clean training data
-  metrics.py        Evaluation and validation threshold selection
-  models/           Random Forest, XGBoost, LightGBM and their evaluation
-  tests/            API, model, provider and training tests
-  requirements.txt  Pinned Python dependencies
-render.yaml         Backend hosting configuration
+START_LINKGUARD.cmd   Windows entry point
+launcher.py          Local product: frontend and API on one port
+backend/             API, URL features, rules, providers, training and tests
+backend/models/      Three preserved models, checksums and provenance
+frontend/            HTML/CSS/JS, hosting configuration and browser tests
+reports/             One CSV, one graphical PDF and its presentation image
+tools/               Rebuild the report and export the source package
+render.yaml          Render hosting configuration
 ```
 
-## Run locally
+Full historical research, experiment scripts, old reports and documentation are
+preserved on [research-archive-2026-11-03](https://github.com/5uhaeb/phishing-url-detector/tree/research-archive-2026-11-03).
+Raw datasets, feed snapshots, credentials, virtual environments and experiment
+artifacts are excluded from this delivery. Dataset attribution/provenance remains
+in the model evaluation metadata; the Phishing.Database license is retained.
 
-Use Python 3.13. From the project folder in PowerShell:
+## Train on an explicitly chosen dataset
+
+Training is optional and never runs when starting the product. Supply a CSV or
+JSON with `url`, `URL` or `text`, plus binary `label`. Declare which label is the
+positive class. Nothing automatically downloads or mixes UCI into training.
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
-.\.venv\Scripts\python.exe backend\main.py
+.\.venv\Scripts\python.exe backend\train.py --dataset C:\datasets\urls.json --positive-label 1 --dataset-name ealvaradob --target-name malicious --infer-https --output backend\training_output\my_run
 ```
 
-Open a second terminal in the same folder:
+`--infer-https` applies the same scheme convention to bare URLs in either class.
+Cleaning reports invalid, duplicate and contradictory labels. Domains are
+separated across fitting/calibration/validation/test, and both balanced-F1 and
+conservative operating points are reported. Source metadata is not a feature.
+Use confirmed phishing labels if you intend to evaluate phishing detection.
+Training writes a new directory and does not replace production artifacts.
 
-```powershell
-.\.venv\Scripts\python.exe frontend\dev_server.py
-```
-
-Open http://127.0.0.1:5187. The frontend forwards API requests to the backend on port 5000.
-The backend starts with XGBoost. To use another preserved model, set `$env:MODEL_NAME = 'random_forest'`
-or `$env:MODEL_NAME = 'lightgbm'` before starting the backend. Only one model loads at a time.
-
-## API
-
-- `POST /api/predict`: JSON `{"url":"https://example.com","consent":false}`.
-- `GET /api/status`: model, public-feed and optional external-service availability.
-- `GET /api/models`: the recorded comparison of all three models.
-- `GET /health`: readiness and the active model version.
-- `GET /evaluation`: the matching model evaluation report.
-
-Reports download in the frontend. Low predicted risk does not establish safety.
-Submitted URLs are not stored. Google lookups require a configured key and explicit per-request consent.
-
-## Test
+## Tests and maintenance
 
 ```powershell
 cd backend
@@ -63,146 +123,22 @@ cd backend
 cd ..\frontend
 npm ci
 npm run check
-npm run build
 npm test
 ```
 
-Browser tests start both local servers and use installed Google Chrome.
-The static frontend builds independently of backend files.
+Browser tests require installed Google Chrome. Core URL analysis requires no
+external reputation key. Google Web Risk is optional, consent-gated and configured
+only through backend environment variables. Exact feed matches are never whole
+domain blocks. Feed refresh is streamed to disk with bounded SQLite batches;
+source failure retains previous indicators. URLs submitted through the UI are
+not stored by the application. HTTPS, length and keywords alone do not prove safety.
 
-## Training
+To redraw the report from its CSV, install `tools/requirements.txt` and run
+`python tools/client_report.py`. Recreating the underlying research measurements
+requires the archived code and private/licensed snapshots; drawing charts does
+not retrain models. Do not retune using the already examined final cohorts.
 
-```powershell
-.\.venv\Scripts\python.exe backend\train.py --download --output backend\training_output
-```
-
-Training uses raw UCI PhiUSIIL URLs plus the supplementary ealvaradob URL dataset.
-It removes duplicate/conflicting records and separates domains between training, calibration,
-validation and testing. Model weights and thresholds are selected on validation, before test scoring.
-The simplified trainer uses fixed model configurations; the original parameter-search experiment is archived.
-It saves all three models, checksums, split indices, evaluation JSON and comparison CSV in a new output folder.
-To use a new training run, replace the model files, manifest and evaluation in `backend/models` together and restart.
-Existing trained models are preserved; reorganizing the code does not retrain them.
-
-## Research audit
-
-The supplied development corpora can be audited without changing the frozen model or
-threshold:
-
-```powershell
-.\.venv\Scripts\python.exe backend\research_audit.py `
-  --combined C:\Users\shaik\Downloads\LinkGuard-Combined-Dataset\combined_phishing_dataset.csv `
-  --external C:\Users\shaik\Downloads\phishing-url-detector\data\kaggle-real-world-phishing\phishing_url_dataset_unique.csv `
-  --combined-split C:\Users\shaik\Downloads\Codex\phishing-url-detector-archive-2026-10-29\artifacts\20261029T154217299203Z\split-indices.npz `
-  --combined-fingerprint b41677b5073aa2f2125130a6c31ebd4d3250285ce76a84e3c7468a036423e856 `
-  --model backend\models\xgboost.joblib `
-  --output backend\audit_output_corrected
-```
-
-The audit verifies the combined corpus fingerprint before evaluating only its held-out
-test indices, and removes Kaggle records whose registrable domains occur anywhere in
-the combined corpus. It writes hashes, invalid/duplicate/conflict counts, URL-style
-profiles, source/type slices, domain-cluster bootstrap 95% intervals, and frozen-model
-feature-ablation sensitivity. Raw-model and final-system-score AUCs are reported
-separately.
-Kaggle `urlhaus` positives are reported as malware and must not be called phishing
-recall. These files are not an untouched final test: timestamps and independent
-provenance collection are still required before a production claim.
-
-Today's capstone work and limitations are summarized in
-[the 1 November 2026 note](docs/capstone/2026-11-01.md), with
-[one consolidated results CSV](docs/capstone/linkguard_final_results_2026-11-01.csv).
-Reusable research scripts are in `backend/research_*.py`; generated datasets,
-model candidates and intermediate reports are excluded from Git.
-
-## Phishing-specific research (1 November 2026)
-
-The latest experiment improves **actual phishing detection**, keeping malware
-labels separate and retaining Random Forest as the capstone baseline. On the
-same 48,406 unseen-domain URLs, the frozen XGBoost/character candidate improved
-phishing recall from **55.80% to 76.34%**, F1 from **68.91% to 85.08%**, and FPR
-from **3.07% to 1.55%**. It did **not** meet the predeclared 1% FPR release gate;
-the existing production model files are unchanged. These scores use a new
-cohort and must not be compared directly with the historical Kaggle aggregate.
-
-- [Repository audit](docs/REPOSITORY_AUDIT.md): concrete issues and code corrections.
-- [Dataset audit](docs/DATASET_AUDIT.md): typed labels, provenance and leakage checks.
-- [Model comparison](docs/MODEL_COMPARISON.md): RF, XGBoost, LightGBM, character models and ensembles.
-- [Evaluation report](docs/EVALUATION_REPORT.md): fresh phishing, malware, uncertainty, runtime and rejection decision.
-- [Capstone alignment](docs/CAPSTONE_ALIGNMENT.md): requirements in the supplied abstract.
-- [Consolidated results](docs/capstone/linkguard_final_results_2026-11-01.csv): historical and current cohorts explicitly identified; values are fractions.
-
-The API now uses its full-precision classification decision; rounded display
-scores cannot promote a URL across the threshold. `rule_evidence` adds stable
-rule identifiers, severity, observed features and bounded index contributions.
-Existing response fields, consent behavior, risk states and deployment layout
-are preserved. The combined index remains a warning score, not a calibrated
-phishing probability.
-
-### Reproduce the research
-
-Use a fresh checkout/cache for a new independent experiment. Install optional
-local research dependencies (they are not added to Render's serving install):
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r backend\requirements-research.txt
-.\.venv\Scripts\python.exe backend\research_sources.py --directory backend\data\capstone_run
-.\.venv\Scripts\python.exe backend\research_data.py --split train --revision eca603e0ecd4f698f8d4d226c088659e72681239
-```
-
-Use the publisher raw `additional-urls.json`, and place the Kaggle export at
-`backend/data/kaggle-real-world-phishing/phishing_url_dataset_unique.csv`. The
-original combined CSV is needed only to exclude domains seen by the legacy
-model. It is not added to the new training mixture. Adjust these local paths:
-
-```powershell
-.\.venv\Scripts\python.exe backend\phishing_benchmark.py --stage baseline --source-directory backend\data --combined C:\datasets\combined_phishing_dataset.csv
-.\.venv\Scripts\python.exe backend\phishing_benchmark.py --stage prepare --source-directory backend\data
-.\.venv\Scripts\python.exe backend\phishing_benchmark.py --stage train --output backend\training_output\new_phishing_run
-.\.venv\Scripts\python.exe backend\phishing_benchmark.py --stage final --output backend\training_output\new_phishing_run --combined C:\datasets\combined_phishing_dataset.csv
-.\.venv\Scripts\python.exe backend\phishing_benchmark.py --stage runtime --output backend\training_output\new_phishing_run
-.\.venv\Scripts\python.exe backend\research_runtime.py --output backend\training_output\new_phishing_run
-```
-
-The source acquisition script refuses to overwrite a reserved snapshot. Training
-freezes all candidates, thresholds and source/model/data hashes before final
-scoring; the final stage refuses reuse. Fitting uses a source/type-stratified
-sample of at most 180,000 rows; character vocabulary uses at most 120,000.
-No HTML or suspicious destinations are fetched. Threat-feed snapshots, trained
-candidates and per-URL predictions remain ignored local artifacts; publisher
-terms still apply. `research_documentation.py` regenerates this capstone run's
-tables from saved results without tuning; it expects its matching baseline,
-timing and protocol artifacts. Historical final cohorts cannot be reused to
-tune a new candidate while retaining an independent-test claim.
-
-## Deployment
-
-The Render API patch was redeployed and verified on 1 November 2026; the original
-XGBoost model remains active. See [deployment status and final scores](docs/DEPLOYMENT_STATUS.md).
-The 3 November memory fix is also live: a complete 788,119-indicator refresh
-completed without a restart, with sampled usage peaking at 257.41 MiB during
-verification. The existing free service plan was retained.
-
-Vercel project root: `frontend`; build: `node build.mjs`; output: `dist`.
-Render service root: `backend`; build: `pip install -r requirements.txt`; start: `python main.py`.
-The checked-in `render.yaml` describes this layout. For an existing Render service, update its root,
-build and start settings before deploying this refactor. Set `FRONTEND_ORIGINS` to exact allowed frontend origins.
-Old `MODEL_PATH` and `EVALUATION_PATH` settings are no longer used; select a model with `MODEL_NAME`.
-Use shared `RATELIMIT_STORAGE_URI` storage before running multiple instances.
-Feed refresh streams downloads to disk, deduplicates in disk-backed SQLite, and
-inserts bounded 512-row batches. It never holds the full feed/URL dictionary in
-memory. Downloads are capped at 100 MiB and individual lines at 32 KiB; failed
-validation or database writes retain previous indicators. `REFRESH_FEEDS=0`
-temporarily pauses automatic refresh for incident recovery; it does not disable
-the model or matching against an existing snapshot. See the
-[3 November memory incident](docs/MEMORY_INCIDENT_2026-11-03.md).
-`backend/.env.example` lists optional environment settings; it is not loaded automatically.
-
-## Previous research and backups
-
-The full pre-cleanup project, original model artifacts, datasets, CSV reports and research scripts are preserved at:
-
-`C:\Users\shaik\Downloads\Codex\phishing-url-detector-archive-2026-10-29`
-
-The client CSV package is inside that archive at `reports/research/2026-10-29.zip`.
-Dataset provenance and licenses remain in `backend/models/evaluation.json`; the public-feed license is in `backend/licenses`.
+Export a fresh source delivery with `python tools/export_product.py --output
+C:\deliveries\LinkGuard`. The ZIP includes a per-file SHA-256 manifest and excludes
+private data and generated environments. Keep the original model artifacts for
+rollback. Publish no research candidate without independent release validation.
