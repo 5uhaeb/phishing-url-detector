@@ -1,0 +1,2 @@
+# Install backend/requirements.txt first; metadata downloader only.
+pyarrow==23.0.1
