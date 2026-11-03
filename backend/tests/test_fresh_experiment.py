@@ -3,13 +3,14 @@ import importlib.util
 from pathlib import Path
 import unittest
 import sys
+from tempfile import TemporaryDirectory
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 
 from detector import FEATURE_NAMES, extract_features
-from lexical_features import RichUrlFeatures, canonical_text, numeric_features
+from lexical_features import RichUrlFeatures, LatentUrlFeatures, canonical_text, numeric_features
 
 
 def benchmark_module():
@@ -64,6 +65,35 @@ class FreshExperimentTests(unittest.TestCase):
         ci=module.confidence(labels,labels,np.array(['a','a','b','b','c','c']),resamples=20)
         self.assertEqual(ci['accuracy'],[1.,1.])
         self.assertEqual(ci['false_positive_rate'],[0.,0.])
+
+    def test_parser_preserves_valid_ip_rows(self):
+        module=benchmark_module()
+        records,vectors,invalid=module.parse_batch(('train',[
+            ('https://170.205.31.135/login','phish','2025-01-01','a'*64),
+            ('not a valid URL','benign','2025-01-01','b'*64)]))
+        self.assertEqual(len(records),1)
+        self.assertEqual(records[0]['group'],'170.205.31.135')
+        self.assertEqual(vectors[0][FEATURE_NAMES.index('ip_hostname')],1)
+        self.assertEqual(invalid,1)
+
+    def test_final_test_cannot_be_reopened(self):
+        module=benchmark_module()
+        with TemporaryDirectory() as directory:
+            root=Path(directory)
+            (root/'test_opened.json').write_text('{}',encoding='utf-8')
+            with self.assertRaisesRegex(ValueError,'already started'):
+                module.final(root)
+
+    def test_latent_factors_preserve_numeric_features_and_www_invariance(self):
+        urls=[f'https://training-{i}.example.com/'+('account-confirm' if i%2 else 'community-guide')
+              for i in range(12)]
+        rich=RichUrlFeatures(char_features=30,word_features=10).fit(urls,np.array([0,1]*6))
+        matrix=rich.transform(urls)
+        latent=LatentUrlFeatures(n_components=4,sample_rows=10).fit_matrix(matrix,rich)
+        transformed=latent.transform(urls[:1])
+        self.assertTrue(np.isfinite(transformed).all())
+        np.testing.assert_array_equal(transformed[0,:32],numeric_features(urls[0])[:32])
+        np.testing.assert_array_equal(transformed,latent.transform([urls[0].replace('://','://www.',1)]))
 
 
 if __name__=='__main__': unittest.main()

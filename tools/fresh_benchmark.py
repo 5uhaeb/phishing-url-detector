@@ -1,8 +1,10 @@
 """Fresh, staged, domain-disjoint three-family benchmark. See fresh_protocol.md."""
 import argparse
 from datetime import datetime, timezone
+from concurrent.futures import ProcessPoolExecutor
 import gc
 import hashlib
+import ipaddress
 import json
 from pathlib import Path
 import sys
@@ -25,8 +27,8 @@ from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 
 from detector import FEATURE_NAMES, extract_features
-from lexical_features import RichUrlFeatures, canonical_text, numeric_features
-from metrics import metrics, tune_threshold, f1_threshold
+from lexical_features import RichUrlFeatures, LatentUrlFeatures, canonical_text, numeric_features
+from metrics import metrics, tune_threshold
 from train import make_models, NAMES
 
 SEED = 20261103
@@ -34,6 +36,24 @@ SEED = 20261103
 
 def write_json(path, obj):
     path.write_text(json.dumps(obj, indent=2, allow_nan=False), encoding='utf-8')
+
+
+def parse_batch(task):
+    split, rows = task
+    records, vectors, invalid = [], [], 0
+    for url, label, date, sample_hash in rows:
+        try: normalized, features, group = extract_features(url)
+        except (ValueError, TypeError): invalid += 1; continue
+        parts = urlsplit(normalized)
+        authority = parts.netloc
+        if (parts.hostname or '').startswith('www.'):
+            at = authority.rfind('@') + 1
+            authority = authority[:at] + authority[at+4:]
+        key = urlunsplit(parts._replace(netloc=authority))
+        records.append(dict(url=normalized, key=key, group=group, label=int(label == 'phish'),
+                            publisher_split=split, date=date, sample_sha256=sample_hash))
+        vectors.append([features[name] for name in FEATURE_NAMES])
+    return records, vectors, invalid
 
 
 def prepare(metadata, output):
@@ -48,20 +68,12 @@ def prepare(metadata, output):
         raw[split] = len(frame)
         www[split] = frame.assign(www=frame.url.str.contains(r'://www\.', regex=True)).groupby('label').www.mean().to_dict()
         invalid[split] = 0
-        for index, row in enumerate(frame.itertuples(index=False)):
-            try: normalized, features, group = extract_features(row.url)
-            except (ValueError, TypeError): invalid[split] += 1; continue
-            parts = urlsplit(normalized)
-            # Same normalization for both labels; keep scheme/path/query intact.
-            authority = parts.netloc
-            if (parts.hostname or '').startswith('www.'):
-                at = authority.rfind('@') + 1
-                authority = authority[:at] + authority[at+4:]
-            key = urlunsplit(parts._replace(netloc=authority))
-            records.append(dict(url=normalized, key=key, group=group, label=int(row.label == 'phish'),
-                                publisher_split=split, date=row.date, sample_sha256=row.sha256))
-            vectors.append([features[name] for name in FEATURE_NAMES])
-            if index and index % 100000 == 0: print(f'Parsed {split}: {index:,}', flush=True)
+        tasks = [(split,list(frame.iloc[start:start+5000][['url','label','date','sha256']]
+                             .itertuples(index=False,name=None))) for start in range(0,len(frame),5000)]
+        with ProcessPoolExecutor(max_workers=6) as pool:
+            for index,(batch_records,batch_vectors,batch_invalid) in enumerate(pool.map(parse_batch,tasks)):
+                records.extend(batch_records); vectors.extend(batch_vectors); invalid[split]+=batch_invalid
+                if index % 20 == 19: print(f'Parsed {split}: {min(len(frame),(index+1)*5000):,}',flush=True)
     clean = pd.DataFrame(records)
     base = np.asarray(vectors, dtype=np.float32)
     del records, vectors, frame; gc.collect()
@@ -101,6 +113,9 @@ def prepare(metadata, output):
     for row in valid.groupby('label').head(250).itertuples():
         parts = urlsplit(row.url)
         if ':' in parts.hostname or parts.username is not None: continue
+        try: ipaddress.ip_address(parts.hostname)
+        except ValueError: pass
+        else: continue
         host = parts.hostname.removeprefix('www.')
         suffix = (':' + str(parts.port)) if parts.port is not None else ''
         first = urlunsplit(parts._replace(netloc=host+suffix))
@@ -137,6 +152,18 @@ def target_threshold(labels, scores):
 
 
 def candidate_models(jobs, round_name):
+    if round_name == 'latent':
+        return {
+            'random_forest_latent': RandomForestClassifier(n_estimators=400,max_depth=32,min_samples_leaf=2,
+                max_features='sqrt',class_weight='balanced_subsample',n_jobs=jobs,random_state=SEED+2),
+            'xgboost_latent': XGBClassifier(n_estimators=1400,max_depth=6,learning_rate=.045,
+                min_child_weight=5,subsample=.85,colsample_bytree=.9,reg_lambda=8,
+                tree_method='hist',max_bin=128,eval_metric='logloss',n_jobs=jobs,random_state=SEED+2),
+            'lightgbm_latent': LGBMClassifier(n_estimators=1600,num_leaves=63,learning_rate=.035,
+                min_child_samples=50,subsample=.85,subsample_freq=1,colsample_bytree=.9,
+                reg_lambda=5,max_bin=127,n_jobs=jobs,random_state=SEED+2,
+                verbosity=-1,deterministic=True,force_col_wise=True),
+        }
     if round_name == 'lexical':
         return {
             'random_forest_rich': RandomForestClassifier(n_estimators=360, max_depth=40, min_samples_leaf=1,
@@ -187,10 +214,26 @@ def matrices(output, frame, rich=False):
     return result
 
 
+def latent_matrices(output,frame):
+    raw=matrices(output,frame,rich=True)
+    path=output/'latent_features.joblib'
+    if not path.exists():
+        print('Learning train-only latent text factors...',flush=True)
+        features=LatentUrlFeatures().fit_matrix(raw['training'],joblib.load(output/'rich_features.joblib'))
+        joblib.dump(features,path,compress=3)
+    features=joblib.load(path)
+    result={}
+    for name,matrix in raw.items():
+        cache=output/f'latent_{name}.npy'
+        if not cache.exists():np.save(cache,features.transform_matrix(matrix))
+        result[name]=np.load(cache,mmap_mode='r')
+    return result
+
+
 def fit_stage(output, jobs, stage):
     if (output / 'frozen.json').exists(): raise ValueError('Selections frozen; no further tuning on this experiment.')
     frame = pd.read_csv(output / 'cohort.csv', keep_default_na=False)
-    x = matrices(output, frame, rich=stage != 'baseline')
+    x = latent_matrices(output,frame) if stage=='latent' else matrices(output, frame, rich=stage != 'baseline')
     ys = {name: frame.loc[frame.partition.eq(name), 'label'].to_numpy() for name in x}
     models = make_models(jobs) if stage == 'baseline' else candidate_models(jobs, stage)
     for identifier, base in models.items():
@@ -201,12 +244,20 @@ def fit_stage(output, jobs, stage):
             print(f'Already measured: {name}', flush=True); continue
         started = time.monotonic()
         print(f'Fitting {name}: {x["training"].shape}...', flush=True)
-        base.fit(x['training'], ys['training'])
-        base.set_params(n_jobs=1)
-        model = CalibratedClassifierCV(FrozenEstimator(base), method='sigmoid')
-        model.fit(x['calibration'], ys['calibration'])
-        scores = model.predict_proba(x['validation'])[:, 1]
-        balanced = f1_threshold(ys['validation'], scores) if stage == 'baseline' else target_threshold(ys['validation'], scores)
+        artifact_path = output / f'{name}.joblib'
+        scores_path = output / f'{name}_validation.npy'
+        recovered = artifact_path.exists() and scores_path.exists()
+        if recovered:
+            model = joblib.load(artifact_path)
+            base = model.estimator.estimator
+            scores = np.load(scores_path)
+        else:
+            base.fit(x['training'], ys['training'])
+            base.set_params(n_jobs=1)
+            model = CalibratedClassifierCV(FrozenEstimator(base), method='sigmoid')
+            model.fit(x['calibration'], ys['calibration'])
+            scores = model.predict_proba(x['validation'])[:, 1]
+        balanced = target_threshold(ys['validation'], scores)
         conservative = tune_threshold(ys['validation'], scores, .008)
         result = dict(identifier=name, family=family, model_name=NAMES[family], stage=stage,
             balanced_threshold=balanced, conservative_threshold=conservative,
@@ -214,11 +265,16 @@ def fit_stage(output, jobs, stage):
                             conservative=metrics(ys['validation'], scores >= conservative)),
             validation_roc_auc=float(roc_auc_score(ys['validation'], scores)),
             validation_pr_auc=float(average_precision_score(ys['validation'], scores)),
-            elapsed_seconds=time.monotonic()-started, parameters=base.get_params(),
-            feature_set='original_32' if stage == 'baseline' else 'www_invariant_rich_url',
+            elapsed_seconds=time.monotonic()-started, recovered_saved_fit=recovered,
+            parameters={key: (None if isinstance(value,float) and not np.isfinite(value) else value)
+                        for key,value in base.get_params().items()},
+            parameter_note='Nonfinite XGBoost missing-value sentinel is represented as null.',
+            feature_set=('original_32' if stage=='baseline' else 'www_invariant_latent_url' if stage=='latent'
+                         else 'www_invariant_rich_url'),
             trained_at=datetime.now(timezone.utc).isoformat())
-        joblib.dump(model, output / f'{name}.joblib', compress=3)
-        np.save(output / f'{name}_validation.npy', scores)
+        if not recovered:
+            joblib.dump(model, artifact_path, compress=3)
+            np.save(scores_path, scores)
         write_json(result_path, result)
         print(json.dumps(result, indent=2), flush=True)
         del model; gc.collect()
@@ -226,6 +282,21 @@ def fit_stage(output, jobs, stage):
 
 def freeze(output):
     if (output / 'frozen.json').exists(): raise ValueError('Already frozen')
+    # Apply one common operating-point objective to both baseline and improved
+    # candidates, so a threshold-policy change cannot masquerade as feature gains.
+    frame = pd.read_csv(output / 'cohort.csv',keep_default_na=False)
+    validation_labels = frame.loc[frame.partition.eq('validation'),'label'].to_numpy()
+    for path in output.glob('*.json'):
+        result = json.loads(path.read_text(encoding='utf-8'))
+        if 'identifier' not in result: continue
+        scores = np.load(output / f'{result["identifier"]}_validation.npy')
+        threshold = target_threshold(validation_labels,scores)
+        if threshold != result['balanced_threshold']:
+            result['initial_validation_f1_threshold'] = result['balanced_threshold']
+            result['balanced_threshold'] = threshold
+            result['validation']['balanced'] = metrics(validation_labels,scores>=threshold)
+        result['balanced_policy'] = 'Maximize minimum of validation accuracy, precision, recall, F1'
+        write_json(path,result)
     candidates = [json.loads(p.read_text(encoding='utf-8')) for p in output.glob('*.json')
                   if p.name not in ('audit.json', 'frozen.json', 'final.json') and 'identifier' in json.loads(p.read_text(encoding='utf-8'))]
     selected = []
@@ -244,7 +315,8 @@ def freeze(output):
                 threshold=result[f'{policy}_threshold'],
                 artifact_sha256=hashlib.sha256((output / f'{result["identifier"]}.joblib').read_bytes()).hexdigest()))
     write_json(output / 'frozen.json', dict(frozen_at=datetime.now(timezone.utc).isoformat(), selected=selected,
-        candidate_count=len(candidates), final_test_previously_opened=False))
+        candidate_count=len(candidates), final_test_previously_opened=False,
+        balanced_policy='Same weakest-of-four validation objective for fresh baselines and retrained models'))
     print('All baseline/improved families and operating points frozen before test predictions.', flush=True)
 
 
@@ -277,6 +349,9 @@ def final(output):
     base = np.load(output / 'base.npy', mmap_mode='r')[ix]
     features = joblib.load(output / 'rich_features.joblib')
     rich = features.transform(test.url.tolist())
+    latent=None
+    if any(s['identifier'].endswith('_latent') for s in frozen['selected']):
+        latent=joblib.load(output/'latent_features.joblib').transform_matrix(rich)
     result, cache = [], {}
     for selection in frozen['selected']:
         identifier = selection['identifier']
@@ -284,7 +359,8 @@ def final(output):
             if hashlib.sha256((output / f'{identifier}.joblib').read_bytes()).hexdigest() != selection['artifact_sha256']:
                 raise ValueError('Model artifact changed after selection')
             model = joblib.load(output / f'{identifier}.joblib')
-            scores = model.predict_proba(base if identifier.endswith('_baseline') else rich)[:,1]
+            matrix=base if identifier.endswith('_baseline') else latent if identifier.endswith('_latent') else rich
+            scores = model.predict_proba(matrix)[:,1]
             cache[identifier] = scores
             del model; gc.collect()
         scores = cache[identifier]
@@ -320,12 +396,18 @@ def final(output):
 
 if __name__ == '__main__':
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('stage',choices=['prepare','baseline','lexical','deep','freeze','final'])
+    parser.add_argument('stage',choices=['prepare','features','latent-features','baseline','lexical','latent','deep','freeze','final'])
     parser.add_argument('--metadata',type=Path)
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--jobs',type=int,default=6)
     args=parser.parse_args()
     if args.stage=='prepare': prepare(args.metadata,args.output)
+    elif args.stage=='features':
+        if (args.output/'frozen.json').exists(): raise ValueError('Selections already frozen')
+        matrices(args.output,pd.read_csv(args.output/'cohort.csv',keep_default_na=False),rich=True)
+    elif args.stage=='latent-features':
+        if (args.output/'frozen.json').exists(): raise ValueError('Selections already frozen')
+        latent_matrices(args.output,pd.read_csv(args.output/'cohort.csv',keep_default_na=False))
     elif args.stage=='freeze': freeze(args.output)
     elif args.stage=='final': final(args.output)
     else: fit_stage(args.output,args.jobs,args.stage)

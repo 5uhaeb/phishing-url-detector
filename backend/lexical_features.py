@@ -7,6 +7,8 @@ from scipy import sparse
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_selection import SelectKBest, chi2
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.decomposition import TruncatedSVD
 
 from detector import FEATURE_NAMES, extract_features, text_entropy
 
@@ -84,3 +86,33 @@ class RichUrlFeatures(BaseEstimator, TransformerMixin):
         word = self.word_selector_.transform(self.word_vectorizer_.transform(texts))
         numeric = np.stack([numeric_features(url) for url in urls])
         return sparse.hstack([sparse.csr_matrix(numeric), char, word], format='csr', dtype=np.float32)
+
+
+class LatentUrlFeatures(BaseEstimator, TransformerMixin):
+    """Train-only latent text factors, not predictions from another classifier."""
+    def __init__(self,n_components=96,sample_rows=75000,random_state=20261103):
+        self.n_components=n_components
+        self.sample_rows=sample_rows
+        self.random_state=random_state
+
+    def fit_matrix(self,matrix,url_features):
+        self.url_features_=url_features
+        text_columns=(url_features.char_selector_.get_support().sum()+
+                      url_features.word_selector_.get_support().sum())
+        self.numeric_columns_=matrix.shape[1]-int(text_columns)
+        self.tfidf_=TfidfTransformer()
+        text=self.tfidf_.fit_transform(matrix[:,self.numeric_columns_:])
+        rng=np.random.default_rng(self.random_state)
+        sample=rng.choice(len(text.indptr)-1,size=min(matrix.shape[0],self.sample_rows),replace=False)
+        self.svd_=TruncatedSVD(n_components=min(self.n_components,text.shape[1]-1),
+                              n_iter=5,random_state=self.random_state)
+        self.svd_.fit(text[sample])
+        return self
+
+    def transform_matrix(self,matrix):
+        text=self.tfidf_.transform(matrix[:,self.numeric_columns_:])
+        latent=self.svd_.transform(text)
+        return np.hstack([matrix[:,:self.numeric_columns_].toarray(),latent]).astype(np.float32)
+
+    def transform(self,urls):
+        return self.transform_matrix(self.url_features_.transform(urls))

@@ -17,10 +17,11 @@ client export remain unchanged. Results here are experiments, not deployment.
    random splitting, majority-class downsampling, or filtering hard test rows.
 5. Freshly fit all three current `train.make_models` configurations using the
    shared 32 features. Calibrate on calibration only, freeze validation-only
-   maximum-F1 and low-FPR operating points. These are fresh code baselines,
+   weakest-of-four and low-FPR operating points. These are fresh code baselines,
    not predictions recycled from an older artifact.
 6. Train all three families with expanded lexical URL statistics and train-only
-   character/word features. Tune depth/regularization/number of trees on validation
+   character/word features, including train-only TF-IDF/SVD text factors as a
+   second feature representation (not a stacked classifier). Tune depth/regularization/number of trees on validation
    only. Every feature must be invariant to adding/removing leading `www.`.
    No external blacklist, source/date/label/HTML/brand annotation features.
 7. Select the best candidate per family by the minimum of accuracy, precision,
@@ -40,3 +41,9 @@ client export remain unchanged. Results here are experiments, not deployment.
 This controls the explicit www shortcut and domain leakage; it cannot prove the
 absence of every source bias or guarantee future performance. Benchmark precision
 depends on phishing prevalence; report a projected 1% prevalence precision too.
+
+Pre-test protocol clarification: the first baseline fits recorded maximum-F1
+thresholds. Before any final-test access, rescore their saved validation predictions
+with the same weakest-of-four threshold objective as the improved models. Preserve
+the initial threshold as a diagnostic. This avoids confusing threshold selection
+with gains from retraining; fitted baseline models themselves do not change.
