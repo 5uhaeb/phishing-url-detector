@@ -2,11 +2,13 @@
 
 import hashlib
 import json
+import logging
 import os
 import sqlite3
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from urllib.parse import urlsplit, urlunsplit
 
 import requests
@@ -14,6 +16,9 @@ import requests
 from detector import parse_url
 
 ROOT = Path(__file__).resolve().parent
+MAX_FEED_BYTES = 100 * 1024 * 1024
+MAX_LINE_BYTES = 32 * 1024
+INSERT_BATCH_SIZE = 512
 SOURCES = {
     'openphish': dict(name='OpenPhish Community',
         url='https://raw.githubusercontent.com/openphish/public_feed/main/feed.txt',
@@ -72,6 +77,74 @@ class FeedStore:
         except (sqlite3.Error, ValueError, KeyError, TypeError):
             return dict(status='unavailable', sources=[], total_indicators=0)
 
+    @staticmethod
+    def _download(source, destination):
+        digest = hashlib.sha256()
+        total = 0
+        with requests.get(source['url'], timeout=(3, 30), stream=True,
+                          allow_redirects=False, headers={'User-Agent': 'AcademicPhishingDetector/2.0'}) as response:
+            response.raise_for_status()
+            if response.status_code != 200:
+                raise ValueError('Unexpected redirect/status.')
+            with destination.open('wb') as output:
+                for chunk in response.iter_content(65536):
+                    total += len(chunk)
+                    if total > MAX_FEED_BYTES:
+                        raise ValueError('Feed exceeds size limit.')
+                    digest.update(chunk)
+                    output.write(chunk)
+        return digest.hexdigest()
+
+    def _import(self, key, source, downloaded, checksum):
+        # TEMP rows live on disk. Python holds at most one bounded line and
+        # 512 digests, rather than copies of the whole feed and a large dict.
+        with closing(sqlite3.connect(self.database, timeout=10)) as db:
+            db.execute('PRAGMA temp_store=FILE')
+            db.execute('PRAGMA cache_size=-1024')
+            db.execute('PRAGMA temp.cache_size=-1024')
+            db.execute('PRAGMA mmap_size=0')
+            with db:
+                db.execute('CREATE TABLE IF NOT EXISTS sources (source TEXT PRIMARY KEY, metadata TEXT NOT NULL)')
+                db.execute('CREATE TABLE IF NOT EXISTS indicators (digest TEXT, source TEXT, PRIMARY KEY(digest, source))')
+                db.execute('CREATE TEMP TABLE incoming (digest TEXT PRIMARY KEY) WITHOUT ROWID')
+                total_lines, valid_lines, batch = 0, 0, []
+                with downloaded.open('rb') as stream:
+                    while True:
+                        raw = stream.readline(MAX_LINE_BYTES + 1)
+                        if not raw:
+                            break
+                        if len(raw) > MAX_LINE_BYTES:
+                            raise ValueError('Feed line exceeds size limit.')
+                        line = raw.decode('utf-8-sig').strip()
+                        if not line or line.startswith('#'):
+                            continue
+                        total_lines += 1
+                        if total_lines % 100000 == 0:
+                            logging.getLogger(__name__).info('Feed import source=%s lines=%d', key, total_lines)
+                        try:
+                            canonical = canonical_url(line)
+                        except ValueError:
+                            continue
+                        valid_lines += 1
+                        batch.append((hashlib.sha256(canonical.encode()).hexdigest(),))
+                        if len(batch) == INSERT_BATCH_SIZE:
+                            db.executemany('INSERT OR IGNORE INTO incoming VALUES (?)', batch)
+                            batch.clear()
+                if batch:
+                    db.executemany('INSERT OR IGNORE INTO incoming VALUES (?)', batch)
+                count = db.execute('SELECT COUNT(*) FROM incoming').fetchone()[0]
+                if not count or valid_lines * 2 < total_lines:
+                    raise ValueError('Feed contains too few valid URLs.')
+                metadata = dict(source, fetched_at=datetime.now(timezone.utc).isoformat(),
+                                sha256=checksum, indicator_count=count,
+                                skipped_lines=total_lines-count)
+                # The old indicators/metadata remain visible until this complete
+                # validated replacement commits. Any parsing/SQL failure rolls back.
+                db.execute('DELETE FROM indicators WHERE source=?', (key,))
+                db.execute('INSERT INTO indicators SELECT digest, ? FROM incoming', (key,))
+                db.execute('INSERT OR REPLACE INTO sources VALUES (?,?)', (key, json.dumps(metadata)))
+        return count
+
     def refresh(self, only=None):
         self.directory.mkdir(parents=True, exist_ok=True)
         results = []
@@ -79,44 +152,12 @@ class FeedStore:
             if only and key not in only:
                 continue
             try:
-                with requests.get(source['url'], timeout=(3, 30), stream=True,
-                                  allow_redirects=False, headers={'User-Agent': 'AcademicPhishingDetector/2.0'}) as response:
-                    response.raise_for_status()
-                    if response.status_code != 200:
-                        raise ValueError('Unexpected redirect/status.')
-                    chunks, total = [], 0
-                    for chunk in response.iter_content(65536):
-                        total += len(chunk)
-                        if total > 100 * 1024 * 1024:
-                            raise ValueError('Feed exceeds size limit.')
-                        chunks.append(chunk)
-                content = b''.join(chunks)
-                lines = [line.strip() for line in content.decode('utf-8-sig').splitlines()
-                         if line.strip() and not line.startswith('#')]
-                entries = {}
-                for line in lines:
-                    try:
-                        canonical = canonical_url(line)
-                        entries[hashlib.sha256(canonical.encode()).hexdigest()] = None
-                    except ValueError:
-                        continue
-                if not entries or len(entries) < .5 * len(lines):
-                    raise ValueError('Feed contains too few valid URLs.')
-                metadata = dict(source, fetched_at=datetime.now(timezone.utc).isoformat(),
-                                sha256=hashlib.sha256(content).hexdigest(), indicator_count=len(entries),
-                                skipped_lines=len(lines) - len(entries))
-                snapshot = self.directory / f'{key}.txt'
-                temporary = snapshot.with_suffix('.tmp')
-                temporary.write_bytes(content)
-                os.replace(temporary, snapshot)
-                # Update a source atomically. Never replace a good snapshot with an invalid response.
-                with closing(sqlite3.connect(self.database, timeout=10)) as db, db:
-                    db.execute('CREATE TABLE IF NOT EXISTS sources (source TEXT PRIMARY KEY, metadata TEXT NOT NULL)')
-                    db.execute('CREATE TABLE IF NOT EXISTS indicators (digest TEXT, source TEXT, PRIMARY KEY(digest, source))')
-                    db.execute('DELETE FROM indicators WHERE source=?', (key,))
-                    db.executemany('INSERT INTO indicators VALUES (?,?)', ((digest, key) for digest in entries))
-                    db.execute('INSERT OR REPLACE INTO sources VALUES (?,?)', (key, json.dumps(metadata)))
-                results.append(dict(source=key, status='updated', indicator_count=len(entries)))
+                with TemporaryDirectory(prefix='refresh-', dir=self.directory) as temporary:
+                    downloaded = Path(temporary) / 'feed.txt'
+                    checksum = self._download(source, downloaded)
+                    count = self._import(key, source, downloaded, checksum)
+                    os.replace(downloaded, self.directory / f'{key}.txt')
+                results.append(dict(source=key, status='updated', indicator_count=count))
             except (requests.RequestException, ValueError, OSError, sqlite3.Error):
                 results.append(dict(source=key, status='unavailable'))
         return results

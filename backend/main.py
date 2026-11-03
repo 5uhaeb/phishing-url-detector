@@ -178,16 +178,23 @@ def server_error(error):
 
 
 def refresh_feeds():
+    logger = logging.getLogger(__name__)
     while True:
+        started = perf_counter()
+        logger.info('Public-feed refresh started')
         try:
-            feed_store.refresh()
+            for result in feed_store.refresh():
+                logger.info('Public-feed refresh source=%s status=%s indicators=%s elapsed_seconds=%.1f',
+                            result['source'], result['status'], result.get('indicator_count', 0),
+                            perf_counter()-started)
         except Exception:
-            logging.getLogger(__name__).error('Feed refresh failed; previous snapshot retained.')
+            logger.exception('Feed refresh failed; previous snapshot retained.')
         Event().wait(12 * 3600)
 
 
 if __name__ == '__main__':
     from waitress import serve
+    logging.basicConfig(level=logging.INFO)
     if os.getenv('REFRESH_FEEDS', '1') == '1':
         Thread(target=refresh_feeds, daemon=True).start()
     serve(app, host=os.getenv('HOST', '127.0.0.1'), port=int(os.getenv('PORT', '5000')),

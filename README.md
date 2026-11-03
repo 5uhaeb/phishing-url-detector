@@ -186,6 +186,13 @@ The checked-in `render.yaml` describes this layout. For an existing Render servi
 build and start settings before deploying this refactor. Set `FRONTEND_ORIGINS` to exact allowed frontend origins.
 Old `MODEL_PATH` and `EVALUATION_PATH` settings are no longer used; select a model with `MODEL_NAME`.
 Use shared `RATELIMIT_STORAGE_URI` storage before running multiple instances.
+Feed refresh streams downloads to disk, deduplicates in disk-backed SQLite, and
+inserts bounded 512-row batches. It never holds the full feed/URL dictionary in
+memory. Downloads are capped at 100 MiB and individual lines at 32 KiB; failed
+validation or database writes retain previous indicators. `REFRESH_FEEDS=0`
+temporarily pauses automatic refresh for incident recovery; it does not disable
+the model or matching against an existing snapshot. See the
+[3 November memory incident](docs/MEMORY_INCIDENT_2026-11-03.md).
 `backend/.env.example` lists optional environment settings; it is not loaded automatically.
 
 ## Previous research and backups
