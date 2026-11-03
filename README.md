@@ -6,18 +6,25 @@ LinkGuard detects suspicious phishing URLs: deceptive links that impersonate tru
 
 ## Previous and new scores
 
-Fresh baselines and retrained models were tested on the **same 84,212 reserved URLs from 60,767 unseen domains**, using [PhreshPhish](https://huggingface.co/datasets/phreshphish/phreshphish). No UCI data was used; every feature ignores leading `www`. Selection and tuning used validation data only.
+Both tables use the **same 84,212 reserved URLs from 60,767 unseen domains**, using [PhreshPhish](https://huggingface.co/datasets/phreshphish/phreshphish). No UCI data or leading `www` signal was used; tuning used validation data only.
 
-| Model | Version | Accuracy | Precision | Phishing recall | F1 | False-positive rate |
-|---|---|---:|---:|---:|---:|---:|
-| Random Forest | Before | 79.68% | 90.48% | 77.26% | 83.35% | 15.66% |
-| Random Forest | After | **90.37%** | **94.86%** | **90.27%** | **92.51%** | **9.43%** |
-| XGBoost | Before | 79.32% | 91.42% | 75.70% | 82.82% | 13.69% |
-| XGBoost | After | **92.46%** | **95.91%** | **92.49%** | **94.17%** | **7.60%** |
-| LightGBM | Before | 80.47% | 91.55% | 77.48% | 83.93% | 13.78% |
-| LightGBM | After | **92.28%** | **95.88%** | **92.24%** | **94.03%** | **7.64%** |
+### Before development — fresh baselines
 
-Development added richer URL statistics, character/word patterns and domain-balanced training candidates. **All three passed the four 90% targets on measured scores; the under-1% false-positive target failed.** Random Forest's confidence intervals extend below 90%. The test is 65.8% phishing, so its precision does not represent ordinary browsing traffic.
+| Model | Accuracy | Precision | Phishing recall | F1 | False-positive rate |
+|---|---:|---:|---:|---:|---:|
+| Random Forest | 79.68% | 90.48% | 77.26% | 83.35% | 15.66% |
+| XGBoost | 79.32% | 91.42% | 75.70% | 82.82% | 13.69% |
+| LightGBM | 80.47% | 91.55% | 77.48% | 83.93% | 13.78% |
+
+### After development — retrained models
+
+| Model | Accuracy | Precision | Phishing recall | F1 | False-positive rate |
+|---|---:|---:|---:|---:|---:|
+| Random Forest | **90.37%** | **94.86%** | **90.27%** | **92.51%** | **9.43%** |
+| XGBoost | **92.46%** | **95.91%** | **92.49%** | **94.17%** | **7.60%** |
+| LightGBM | **92.28%** | **95.88%** | **92.24%** | **94.03%** | **7.64%** |
+
+All four measured metrics exceed 90%; **false positives remain above the 1% target**. Random Forest's confidence intervals cross 90%. These benchmark scores use 65.8% phishing prevalence, not ordinary browsing prevalence.
 
 [Full report](reports/fresh-2026-11-03/README.md) · [CSV](reports/fresh-2026-11-03/scores.csv) · [Graph](reports/fresh-2026-11-03/comparison.png) · [PDF](reports/fresh-2026-11-03/comparison.pdf)
 
