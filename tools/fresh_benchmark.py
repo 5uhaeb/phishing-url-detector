@@ -152,6 +152,18 @@ def target_threshold(labels, scores):
 
 
 def candidate_models(jobs, round_name):
+    if round_name == 'domain':
+        return {
+            'random_forest_domain': RandomForestClassifier(n_estimators=320,max_depth=40,min_samples_leaf=1,
+                max_samples=.7,max_features='sqrt',n_jobs=jobs,random_state=SEED+3),
+            'xgboost_domain': XGBClassifier(n_estimators=1200,max_depth=8,learning_rate=.045,
+                min_child_weight=5,subsample=.85,colsample_bytree=.8,reg_lambda=8,reg_alpha=.1,
+                tree_method='hist',max_bin=128,eval_metric='logloss',n_jobs=jobs,random_state=SEED+3),
+            'lightgbm_domain': LGBMClassifier(n_estimators=1600,num_leaves=63,learning_rate=.035,
+                min_child_samples=50,subsample=.85,subsample_freq=1,colsample_bytree=.8,
+                reg_lambda=5,reg_alpha=.1,max_bin=127,n_jobs=jobs,random_state=SEED+3,
+                verbosity=-1,deterministic=True,force_col_wise=True),
+        }
     if round_name == 'latent':
         return {
             'random_forest_latent': RandomForestClassifier(n_estimators=400,max_depth=32,min_samples_leaf=2,
@@ -235,8 +247,19 @@ def fit_stage(output, jobs, stage):
     frame = pd.read_csv(output / 'cohort.csv', keep_default_na=False)
     x = latent_matrices(output,frame) if stage=='latent' else matrices(output, frame, rich=stage != 'baseline')
     ys = {name: frame.loc[frame.partition.eq(name), 'label'].to_numpy() for name in x}
+    sample_weight=None
+    if stage=='domain':
+        fit=frame[frame.partition.eq('training')]
+        sizes=fit.group.value_counts()
+        sample_weight=1/np.sqrt(fit.group.map(sizes).to_numpy(dtype=float))
+        for label in (0,1):
+            mask=ys['training']==label
+            sample_weight[mask]*=len(fit)/2/sample_weight[mask].sum()
     models = make_models(jobs) if stage == 'baseline' else candidate_models(jobs, stage)
-    for identifier, base in models.items():
+    # Pop each unfitted estimator so a completed forest is not retained by the
+    # configuration dictionary during subsequent boosted-tree fits.
+    for identifier in list(models):
+        base=models.pop(identifier)
         family = next(name for name in NAMES if identifier.startswith(name))
         name = f'{identifier}_baseline' if stage == 'baseline' else identifier
         result_path = output / f'{name}.json'
@@ -252,7 +275,8 @@ def fit_stage(output, jobs, stage):
             base = model.estimator.estimator
             scores = np.load(scores_path)
         else:
-            base.fit(x['training'], ys['training'])
+            kwargs={} if sample_weight is None else {'sample_weight':sample_weight}
+            base.fit(x['training'], ys['training'],**kwargs)
             base.set_params(n_jobs=1)
             model = CalibratedClassifierCV(FrozenEstimator(base), method='sigmoid')
             model.fit(x['calibration'], ys['calibration'])
@@ -269,6 +293,8 @@ def fit_stage(output, jobs, stage):
             parameters={key: (None if isinstance(value,float) and not np.isfinite(value) else value)
                         for key,value in base.get_params().items()},
             parameter_note='Nonfinite XGBoost missing-value sentinel is represented as null.',
+            training_weights=('Equal class mass; inverse square root of training-domain frequency'
+                              if sample_weight is not None else 'Estimator defaults'),
             feature_set=('original_32' if stage=='baseline' else 'www_invariant_latent_url' if stage=='latent'
                          else 'www_invariant_rich_url'),
             trained_at=datetime.now(timezone.utc).isoformat())
@@ -277,11 +303,14 @@ def fit_stage(output, jobs, stage):
             np.save(scores_path, scores)
         write_json(result_path, result)
         print(json.dumps(result, indent=2), flush=True)
-        del model; gc.collect()
+        del model,base; gc.collect()
 
 
 def freeze(output):
     if (output / 'frozen.json').exists(): raise ValueError('Already frozen')
+    audit=json.loads((output/'audit.json').read_text(encoding='utf-8'))
+    if hashlib.sha256((output/'cohort.csv').read_bytes()).hexdigest()!=audit['cohort_sha256']:
+        raise ValueError('Prepared cohort changed')
     # Apply one common operating-point objective to both baseline and improved
     # candidates, so a threshold-policy change cannot masquerade as feature gains.
     frame = pd.read_csv(output / 'cohort.csv',keep_default_na=False)
@@ -316,6 +345,10 @@ def freeze(output):
                 artifact_sha256=hashlib.sha256((output / f'{result["identifier"]}.joblib').read_bytes()).hexdigest()))
     write_json(output / 'frozen.json', dict(frozen_at=datetime.now(timezone.utc).isoformat(), selected=selected,
         candidate_count=len(candidates), final_test_previously_opened=False,
+        feature_hashes={name:hashlib.sha256((output/name).read_bytes()).hexdigest()
+                        for name in ('rich_features.joblib','latent_features.joblib') if (output/name).exists()},
+        inference_code_hashes={name:hashlib.sha256((ROOT/'backend'/name).read_bytes()).hexdigest()
+                               for name in ('detector.py','lexical_features.py')},
         balanced_policy='Same weakest-of-four validation objective for fresh baselines and retrained models'))
     print('All baseline/improved families and operating points frozen before test predictions.', flush=True)
 
@@ -340,6 +373,15 @@ def final(output):
     if (output / 'final.json').exists() or (output / 'test_opened.json').exists():
         raise ValueError('Final evaluation already started/completed. Do not retune or reopen.')
     frozen = json.loads((output / 'frozen.json').read_text(encoding='utf-8'))
+    audit=json.loads((output/'audit.json').read_text(encoding='utf-8'))
+    if hashlib.sha256((output/'cohort.csv').read_bytes()).hexdigest()!=audit['cohort_sha256']:
+        raise ValueError('Prepared cohort changed')
+    for name,expected in frozen['feature_hashes'].items():
+        if hashlib.sha256((output/name).read_bytes()).hexdigest()!=expected:
+            raise ValueError('Feature transformer changed after selection')
+    for name,expected in frozen['inference_code_hashes'].items():
+        if hashlib.sha256((ROOT/'backend'/name).read_bytes()).hexdigest()!=expected:
+            raise ValueError('Inference code changed after selection')
     write_json(output / 'test_opened.json', dict(opened_at=datetime.now(timezone.utc).isoformat(),
         frozen_sha256=hashlib.sha256((output / 'frozen.json').read_bytes()).hexdigest()))
     frame = pd.read_csv(output / 'cohort.csv', keep_default_na=False)
@@ -396,7 +438,7 @@ def final(output):
 
 if __name__ == '__main__':
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('stage',choices=['prepare','features','latent-features','baseline','lexical','latent','deep','freeze','final'])
+    parser.add_argument('stage',choices=['prepare','features','latent-features','baseline','lexical','latent','domain','deep','freeze','final'])
     parser.add_argument('--metadata',type=Path)
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--jobs',type=int,default=6)

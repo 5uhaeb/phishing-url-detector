@@ -47,3 +47,33 @@ thresholds. Before any final-test access, rescore their saved validation predict
 with the same weakest-of-four threshold objective as the improved models. Preserve
 the initial threshold as a diagnostic. This avoids confusing threshold selection
 with gains from retraining; fitted baseline models themselves do not change.
+
+## Reproduction
+
+Use a new private output folder for each complete experiment. Install the backend
+dependencies and `tools/requirements-fresh.txt`. Set `OMP_NUM_THREADS` and
+`OPENBLAS_NUM_THREADS` to fit available CPU capacity when running stages together.
+
+```text
+python tools/fresh_data.py --output PRIVATE/metadata
+python tools/fresh_benchmark.py prepare --metadata PRIVATE/metadata --output PRIVATE/run
+python tools/fresh_benchmark.py baseline --output PRIVATE/run --jobs 8
+python tools/fresh_benchmark.py lexical --output PRIVATE/run --jobs 8
+python tools/fresh_benchmark.py latent --output PRIVATE/run --jobs 4
+python tools/fresh_benchmark.py freeze --output PRIVATE/run
+python tools/fresh_benchmark.py final --output PRIVATE/run
+python tools/fresh_report.py --experiment PRIVATE/run --output reports/fresh-2026-11-03
+```
+
+The `features` and `latent-features` stages optionally precompute development
+matrices. `deep` is an optional additional tuning round; its candidates are included
+only when actually fitted and logged before freeze. Never run tuning after freeze.
+Charts require the separate optional `tools/requirements.txt` dependencies.
+
+Development-only follow-up: the first lexical RF reached 89.06% validation recall
+at the 0.8% FPR policy. Before freezing/opening test predictions, add a `domain`
+round for all three families: inverse-square-root training-domain frequency,
+normalized to equal total class weight. This reduces domination by prolific
+domains; calibration and validation distributions remain unweighted. Its command
+is `python tools/fresh_benchmark.py domain --output PRIVATE/run --jobs 8`, before
+the freeze stage. The attempted candidates are retained regardless of outcome.
