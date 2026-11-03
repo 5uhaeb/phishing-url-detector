@@ -1,112 +1,73 @@
 {
-  "trained_at": "2026-10-29T15:42:17.299185+00:00",
+  "trained_at": "2026-11-03T13:53:09.472325+00:00",
   "selected_model": "xgboost",
   "selected_model_name": "XGBoost",
   "methodology": {
-    "seed": 42,
-    "positive_class": "phishing (1)",
-    "source_labels": "UCI 0=phishing, 1=legitimate; supplementary 1=phishing, 0=legitimate",
-    "split": "60/10/10/20 approximately: train/calibrate/validation/test; disjoint registered domains",
-    "split_indices_sha256": "93bca1e0cadb74c871575e580b16b264b7ed3d15f02046074cfecdacc0526c99",
-    "calibration": "sigmoid on separate calibration domains",
-    "validation_fpr_target": 0.01,
-    "thresholds_selected_on": "validation only; exact empirical ROC points",
-    "model_selection": "validation hybrid recall, then precision, then average precision",
-    "policy_weights": [
-      1.0,
-      0.9,
-      0.8
-    ],
-    "candidates_per_family": 2,
-    "features": [
-      "url_length",
-      "hostname_length",
-      "path_length",
-      "query_length",
-      "subdomains",
-      "dots",
-      "hyphens",
-      "digits",
-      "digit_ratio",
-      "ats",
-      "percent_signs",
-      "question_marks",
-      "equals",
-      "slashes",
-      "keyword_count",
-      "https",
-      "ip_hostname",
-      "punycode",
-      "explicit_port",
-      "hostname_entropy",
-      "path_entropy",
-      "hostname_digit_ratio",
-      "longest_path_segment",
-      "opaque_path_token",
-      "encoded_destination",
-      "userinfo",
-      "brand_in_subdomain",
-      "hostname_keywords",
-      "path_keywords",
-      "known_suffix",
-      "path_depth",
-      "query_parameters"
-    ],
-    "confusion_matrix_order": [
-      "legitimate",
-      "phishing"
-    ],
-    "test_usage": "Historical regression split; not a new independent prospective benchmark"
+    "positive_class": "phishing=1",
+    "source": "phreshphish/phreshphish",
+    "source_revision": "eca603e0ecd4f698f8d4d226c088659e72681239",
+    "cohort_sha256": "5db1818a418ff8da10021bd59b452664429eb06a367b8c3f926ffe25224e6b46",
+    "test_rows": 84212,
+    "test_domains": 60767,
+    "test_phishing_prevalence": 0.6583622286609985,
+    "threshold_selection": "Frozen validation-only balanced policy; no post-test threshold tuning",
+    "input_mode": "rich_url_v1",
+    "model_input_features": 2692,
+    "rules": "Reported separately; zero weight in this model-only benchmark policy",
+    "release_note": "User-requested deployment. False-positive target <1% remains unmet; production_validated=false",
+    "comparison_warning": "Random Forest and LightGBM entries describe preserved legacy artifacts on a different cohort."
   },
   "splits": {
-    "training": {
-      "rows": 256894,
-      "phishing": 115760,
-      "legitimate": 141134,
-      "domains": 181230
-    },
     "calibration": {
-      "rows": 45850,
-      "phishing": 19135,
-      "legitimate": 26715,
-      "domains": 30205
-    },
-    "validation": {
-      "rows": 41981,
-      "phishing": 18469,
-      "legitimate": 23512,
-      "domains": 30205
+      "rows": 93137,
+      "domains": 28797,
+      "positives": 37038,
+      "negatives": 56099,
+      "date_min": "2024-07-02",
+      "date_max": "2025-09-08"
     },
     "test": {
-      "rows": 86976,
-      "phishing": 37847,
-      "legitimate": 49129,
-      "domains": 60410
+      "rows": 84212,
+      "domains": 60767,
+      "positives": 55442,
+      "negatives": 28770,
+      "date_min": "2025-09-08",
+      "date_max": "2025-12-16"
+    },
+    "training": {
+      "rows": 325617,
+      "domains": 134388,
+      "positives": 147871,
+      "negatives": 177746,
+      "date_min": "2024-07-02",
+      "date_max": "2025-09-08"
+    },
+    "validation": {
+      "rows": 73869,
+      "domains": 28798,
+      "positives": 35220,
+      "negatives": 38649,
+      "date_min": "2024-07-02",
+      "date_max": "2025-09-08"
     }
   },
   "dataset": {
-    "name": "Multi-source raw URLs",
-    "sources": [
-      {
-        "name": "UCI PhiUSIIL",
-        "rows": 235795,
-        "source": "https://archive.ics.uci.edu/static/public/967/phiusiil+phishing+url+dataset.zip",
-        "license": "CC BY 4.0",
-        "sha256": "a236549cd369cd80bd478ff8e1779cbf44c58d5c3f79f7a51a1adbed7d06d1c6"
+    "source": "https://huggingface.co/datasets/phreshphish/phreshphish",
+    "revision": "eca603e0ecd4f698f8d4d226c088659e72681239",
+    "positive_class": "phishing",
+    "cleaning": {
+      "raw_rows": {
+        "train": 498255,
+        "test": 168060
       },
-      {
-        "name": "ealvaradob raw URLs",
-        "source": "https://huggingface.co/datasets/ealvaradob/phishing-dataset/resolve/main/urls.json",
-        "card": "https://huggingface.co/datasets/ealvaradob/phishing-dataset",
-        "license": "Apache-2.0 as declared by dataset publisher; underlying sources listed on dataset card",
-        "raw_rows": 835697,
-        "sampled_rows": 200000,
-        "inferred_https_schemes": 145652,
-        "sha256": "32cfba42892c915b041a3f0ca6ffd0f484b2590c4c2ca91b13d3ea1330b2c9bd"
-      }
-    ],
-    "usable_rows": 431701,
-    "ordered_url_label_sha256": "b41677b5073aa2f2125130a6c31ebd4d3250285ce76a84e3c7468a036423e856"
+      "invalid_rows": {
+        "train": 4458,
+        "test": 1676
+      },
+      "duplicates_removed": 2211,
+      "contradictory_urls": 0,
+      "test_rows_removed_for_training_domain_overlap": 81135
+    }
   },
   "models": {
     "random_forest": {
@@ -232,132 +193,105 @@
         "hybrid": 0.7374883486497344,
         "rules": 0.3
       },
-      "model_weight": 0.8
+      "model_weight": 0.8,
+      "trained_at": "2026-10-29T15:42:17.299185+00:00",
+      "deployment_status": "preserved legacy artifact",
+      "evaluation_cohort": "Legacy combined held-out test; not comparable to the fresh PhreshPhish test"
     },
     "xgboost": {
+      "trained_at": "2026-11-03T13:53:09.472325+00:00",
+      "deployment_status": "active",
+      "model_identifier": "xgboost_domain",
+      "evaluation_cohort": "PhreshPhish unseen-domain later-period test; 84212 rows",
+      "model_weight": 1.0,
       "test_results": {
         "model": {
-          "accuracy": 0.8497401582045622,
-          "precision": 0.98224990268587,
-          "recall": 0.666737125795968,
-          "f1": 0.7943088279270346,
-          "false_positive_rate": 0.009281686987319099,
-          "missed_phishing_rate": 0.333262874204032,
+          "accuracy": 0.9246069443784733,
+          "precision": 0.9590962649858792,
+          "recall": 0.924930558060676,
+          "f1": 0.9417036241265644,
+          "false_positive_rate": 0.07601668404588112,
+          "missed_phishing_rate": 0.07506944193932398,
           "confusion_matrix": [
             [
-              48673,
-              456
+              26583,
+              2187
             ],
             [
-              12613,
-              25234
+              4162,
+              51280
             ]
           ]
         },
         "hybrid": {
-          "accuracy": 0.8498436350257542,
-          "precision": 0.9819935441216505,
-          "recall": 0.6671598805717759,
-          "f1": 0.7945248584015104,
-          "false_positive_rate": 0.009424169024405137,
-          "missed_phishing_rate": 0.33284011942822417,
+          "accuracy": 0.9246069443784733,
+          "precision": 0.9590962649858792,
+          "recall": 0.924930558060676,
+          "f1": 0.9417036241265644,
+          "false_positive_rate": 0.07601668404588112,
+          "missed_phishing_rate": 0.07506944193932398,
           "confusion_matrix": [
             [
-              48666,
-              463
+              26583,
+              2187
             ],
             [
-              12597,
-              25250
-            ]
-          ]
-        },
-        "default_05": {
-          "accuracy": 0.8752414459161147,
-          "precision": 0.8812348189572389,
-          "recall": 0.824398234998811,
-          "f1": 0.8518695480048599,
-          "false_positive_rate": 0.08559099513525616,
-          "missed_phishing_rate": 0.175601765001189,
-          "confusion_matrix": [
-            [
-              44924,
-              4205
-            ],
-            [
-              6646,
-              31201
-            ]
-          ]
-        },
-        "rules": {
-          "accuracy": 0.5886336460632818,
-          "precision": 0.9210097719869706,
-          "recall": 0.05976695642983592,
-          "f1": 0.11224970845842741,
-          "false_positive_rate": 0.003948787884955932,
-          "missed_phishing_rate": 0.9402330435701641,
-          "confusion_matrix": [
-            [
-              48935,
-              194
-            ],
-            [
-              35585,
-              2262
+              4162,
+              51280
             ]
           ]
         }
       },
       "validation_results": {
-        "hybrid": {
-          "accuracy": 0.8401896095852885,
-          "precision": 0.9807849550286182,
-          "recall": 0.6494666738859711,
-          "f1": 0.7814586794358123,
-          "false_positive_rate": 0.009994896223205171,
-          "missed_phishing_rate": 0.35053332611402893,
-          "confusion_matrix": [
-            [
-              23277,
-              235
-            ],
-            [
-              6474,
-              11995
-            ]
-          ]
-        },
         "model": {
-          "accuracy": 0.8399990471880137,
-          "precision": 0.9810085134250164,
-          "recall": 0.6488710812713195,
-          "f1": 0.7810982564771061,
-          "false_positive_rate": 0.009867301803334467,
-          "missed_phishing_rate": 0.3511289187286805,
+          "accuracy": 0.9600509009191948,
+          "precision": 0.9580931830442065,
+          "recall": 0.9581203861442362,
+          "f1": 0.9581067844011301,
+          "false_positive_rate": 0.038189862609640614,
+          "missed_phishing_rate": 0.04187961385576377,
           "confusion_matrix": [
             [
-              23280,
-              232
+              37173,
+              1476
             ],
             [
-              6485,
-              11984
+              1475,
+              33745
             ]
           ]
         }
       },
-      "probabilistic_metrics": {
-        "roc_auc": 0.931700525153619,
-        "average_precision": 0.9350910479549663,
-        "brier_score": 0.0954798196276672
-      },
       "thresholds": {
-        "model": 0.9315155534275944,
-        "hybrid": 0.8407650642509457,
-        "rules": 0.3
+        "model": 0.5800396476112477,
+        "hybrid": 0.5800396476112477
       },
-      "model_weight": 0.9
+      "probabilistic_metrics": {
+        "roc_auc": 0.9788302482140023,
+        "average_precision": 0.9892232954232274
+      },
+      "confidence_95": {
+        "accuracy": [
+          0.9202455406903788,
+          0.9286490146401157
+        ],
+        "precision": [
+          0.9568040852592088,
+          0.96134961966355
+        ],
+        "recall": [
+          0.9184362865079845,
+          0.931010452670163
+        ],
+        "f1": [
+          0.9378075292737034,
+          0.9453547891170538
+        ],
+        "false_positive_rate": [
+          0.07275012390016293,
+          0.07927379044008395
+        ]
+      }
     },
     "lightgbm": {
       "test_results": {
@@ -482,7 +416,10 @@
         "hybrid": 0.7955506433031081,
         "rules": 0.3
       },
-      "model_weight": 0.9
+      "model_weight": 0.9,
+      "trained_at": "2026-10-29T15:42:17.299185+00:00",
+      "deployment_status": "preserved legacy artifact",
+      "evaluation_cohort": "Legacy combined held-out test; not comparable to the fresh PhreshPhish test"
     }
   }
 }

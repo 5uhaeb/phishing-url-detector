@@ -55,6 +55,17 @@ def load_model():
     artifact = joblib.load(path)
     if artifact['features'] != list(FEATURE_NAMES) or list(artifact['model'].classes_) != [0, 1]:
         raise ValueError('Model feature schema or class order is invalid.')
+    mode = artifact.get('input_mode', 'legacy_32')
+    if mode not in ('legacy_32', 'rich_url_v1'):
+        raise ValueError('Unsupported model input mode.')
+    if mode == 'rich_url_v1':
+        from lexical_features import RichUrlFeatures
+        transformer = artifact.get('url_transformer')
+        if not isinstance(transformer, RichUrlFeatures):
+            raise ValueError('Rich URL model requires its fitted feature transformer.')
+        probe = transformer.transform(['https://example.com/'])
+        if probe.shape[1] != artifact['model'].n_features_in_:
+            raise ValueError('Model and feature transformer widths do not match.')
     if not 0 <= artifact['threshold'] <= 1.000000000000001 or not 0 <= artifact.get('model_weight', .8) <= 1:
         raise ValueError('Model threshold or weight is invalid.')
     return artifact
@@ -151,6 +162,9 @@ def api_status():
 def health():
     return jsonify(status='ready' if artifact else 'model_missing', model_name=artifact['model_name'] if artifact else None,
                    model_version=artifact['trained_at'] if artifact else None, production_validated=False,
+                   model_identifier=artifact.get('model_identifier', 'legacy') if artifact else None,
+                   feature_pipeline=artifact.get('input_mode', 'legacy_32') if artifact else None,
+                   decision_threshold=artifact['threshold'] if artifact else None,
                    public_feeds=feed_store.status()), 200 if artifact else 503
 
 

@@ -169,7 +169,10 @@ def hybrid_score(probability, rule_score, model_weight=.8):
 def analyze(value, artifact):
     url, features, _ = extract_features(value)
     rule_score, indicators = evaluate_rules(features)
-    vector = [[features[name] for name in FEATURE_NAMES]]
+    if artifact.get('input_mode') == 'rich_url_v1':
+        vector = artifact['url_transformer'].transform([url])
+    else:
+        vector = [[features[name] for name in FEATURE_NAMES]]
     model = artifact['model']
     phishing_column = list(model.classes_).index(1)
     probability = float(model.predict_proba(vector)[0, phishing_column])
@@ -192,4 +195,6 @@ def analyze(value, artifact):
                 local_is_phishing=bool(phishing),
                 review_required=bool(abs(score-threshold) <= .1 or risk == 'Medium'),
                 rule_evidence=explanations,
-                calibrated=artifact.get('calibrated', False))
+                calibrated=artifact.get('calibrated', False),
+                feature_pipeline=artifact.get('input_mode', 'legacy_32'),
+                model_identifier=artifact.get('model_identifier', artifact.get('model_family', 'legacy')))

@@ -6,7 +6,7 @@
     },
     "xgboost": {
       "file": "xgboost.joblib",
-      "sha256": "08316e688c66e99e2a458802030487a26803f784ba5635b3f05872ed3177c2b9"
+      "sha256": "402e57e96f90fe2a769d15dcee283e8b90fb02e151c06d941997f847b1dfe06a"
     },
     "lightgbm": {
       "file": "lightgbm.joblib",

@@ -115,7 +115,8 @@ def combine_evidence(local, reputation):
                       else 'Known malicious URL', risk='High', evidence='Threat-list match',
                       action='Do not open this URL or enter credentials.')
     elif suspicious:
-        result.update(prediction='Suspicious URL', risk='High', evidence='Local model and rules only',
+        result.update(prediction='Suspicious URL', risk='High',
+                      evidence='Local model only' if local.get('model_weight') == 1. else 'Local model and rules only',
                       action='Avoid this URL until independently verified.')
     elif near_boundary or local['risk'] == 'Medium':
         result.update(prediction='Needs review', risk='Medium', evidence='Inconclusive local signals',

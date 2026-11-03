@@ -44,7 +44,7 @@ All four measured metrics exceed 90%; **false positives remain above the 1% targ
 
 **Live app:** https://phishing-url-detector-xi.vercel.app
 
-The app and launcher use the existing shipped model. **The new scores above describe research models saved locally; their binaries are not uploaded or deployed.** Experiment code and reports are on the [research branch](https://github.com/5uhaeb/phishing-url-detector/tree/research/fresh-90-target-2026-11-03).
+This release packages the **newly trained XGBoost with 2,692 URL features**, using its frozen benchmark threshold. Random Forest and LightGBM files remain legacy baselines; their improved models are research artifacts. Experiment code and reports are on the [research branch](https://github.com/5uhaeb/phishing-url-detector/tree/research/fresh-90-target-2026-11-03).
 
 ### Quick start
 
@@ -87,4 +87,4 @@ cd backend
 ..\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-**38 product tests passed; the research branch passed 46 including experiment checks.** Dataset preparation, training commands and dependencies are in the [experiment protocol](https://github.com/5uhaeb/phishing-url-detector/blob/research/fresh-90-target-2026-11-03/tools/fresh_protocol.md). Training saves separate artifacts and does not replace the deployed model.
+Dataset preparation, training commands and dependencies are in the [experiment protocol](https://github.com/5uhaeb/phishing-url-detector/blob/research/fresh-90-target-2026-11-03/tools/fresh_protocol.md). Training saves separate artifacts and does not automatically replace the deployed model.
