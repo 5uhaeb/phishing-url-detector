@@ -28,8 +28,16 @@ def generate(experiment, output):
     results=report['models']
     audit=report['audit']
     test=audit['splits']['test']
+    balanced_pass=sum(r['all_four_at_least_90'] for r in results if r['version']=='Retrained' and r['policy']=='balanced')
+    conservative_pass=sum(r['all_four_at_least_90'] and r['fpr_under_1pct'] for r in results
+                          if r['version']=='Retrained' and r['policy']=='conservative')
     lines=['# Fresh LinkGuard experiment — 3 November 2026','',
         '**Research results; the deployed application and client ZIP are unchanged.**','',
+        f'**Final verdict: {balanced_pass}/3 retrained families meet all four 90% targets at their '
+        f'balanced policies; {conservative_pass}/3 meet all four plus FPR <1% at their conservative policies.**','',
+        'These are measured point estimates. Random Forest is borderline: its accuracy and recall '
+        '95% confidence intervals extend below 90%. The false-positive release target is unmet; '
+        'these results do not justify automatic production promotion.','',
         f"Data: [official PhreshPhish]({audit['source']}), revision `{audit['source_revision']}`.",
         f"Final test: **{test['rows']:,} URLs**, **{test['domains']:,} domains**, "
         f"{test['positives']:,} phishing / {test['negatives']:,} benign. "
@@ -100,9 +108,10 @@ def generate(experiment, output):
         ax.set_axisbelow(True)
         ax.text(.5,-.15,'Balanced FPR: '+ ' → '.join(f"{r['false_positive_rate']*100:.2f}%" for r in rows),
                 transform=ax.transAxes,ha='center',fontsize=10)
-    fig.suptitle('LinkGuard · Fresh training and unseen-domain future test',fontsize=17,weight='bold',y=.98)
+    fig.suptitle('LinkGuard · Fresh training and unseen-domain later-period test',fontsize=17,weight='bold',y=.98)
     axes[0].legend(loc='lower left')
-    fig.text(.5,.045,f"{test['rows']:,} test URLs · {test['domains']:,} unseen domains · www-invariant URL features · "
+    fig.text(.5,.045,f"{test['rows']:,} URLs · {100*test['positives']/test['rows']:.1f}% phishing · "
+             f"{test['domains']:,} unseen domains · www-invariant features · "
              'No prior scores used · Research only',ha='center',fontsize=10)
     fig.subplots_adjust(top=.82,bottom=.26,wspace=.25)
     fig.savefig(output/'comparison.png',dpi=180)

@@ -1,5 +1,11 @@
 # LinkGuard — client delivery
 
+> **Fresh experiment on this research branch:** [final results and methodology](reports/fresh-2026-11-03/README.md).
+> All three retrained families measured above 90% accuracy, precision, recall and F1
+> on 84,212 reserved URLs. The under-1% false-positive goal was not met. These are
+> research artifacts; the shipped models, live deployment and original client ZIP
+> remain unchanged. [CSV](reports/fresh-2026-11-03/scores.csv) · [Graph](reports/fresh-2026-11-03/comparison.png).
+
 A lightweight URL checker with a browser interface, Flask API, machine learning,
 security rules and optional exact-URL threat-feed matching. Submitted websites
 are never opened. Low detected risk is not a safety guarantee.

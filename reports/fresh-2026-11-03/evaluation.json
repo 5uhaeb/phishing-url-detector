@@ -1,0 +1,834 @@
+{
+  "evaluated_at": "2026-11-03T13:58:01.297327+00:00",
+  "audit": {
+    "created_at": "2026-11-03T13:04:11.582945+00:00",
+    "starting_commit": "56c2703",
+    "source_revision": "eca603e0ecd4f698f8d4d226c088659e72681239",
+    "source": "https://huggingface.co/datasets/phreshphish/phreshphish",
+    "raw_rows": {
+      "train": 498255,
+      "test": 168060
+    },
+    "invalid_rows": {
+      "train": 4458,
+      "test": 1676
+    },
+    "contradictory_urls": 0,
+    "contradictory_rows": 0,
+    "duplicates_removed": 2211,
+    "test_rows_removed_for_training_domain_overlap": 81135,
+    "www_fraction_by_class": {
+      "train": {
+        "benign": 0.5774096679422829,
+        "phish": 0.03909699087240324
+      },
+      "test": {
+        "benign": 0.554098181021258,
+        "phish": 0.16372395833333334
+      }
+    },
+    "www_invariance_pairs_checked": 499,
+    "splits": {
+      "calibration": {
+        "rows": 93137,
+        "domains": 28797,
+        "positives": 37038,
+        "negatives": 56099,
+        "date_min": "2024-07-02",
+        "date_max": "2025-09-08"
+      },
+      "test": {
+        "rows": 84212,
+        "domains": 60767,
+        "positives": 55442,
+        "negatives": 28770,
+        "date_min": "2025-09-08",
+        "date_max": "2025-12-16"
+      },
+      "training": {
+        "rows": 325617,
+        "domains": 134388,
+        "positives": 147871,
+        "negatives": 177746,
+        "date_min": "2024-07-02",
+        "date_max": "2025-09-08"
+      },
+      "validation": {
+        "rows": 73869,
+        "domains": 28798,
+        "positives": 35220,
+        "negatives": 38649,
+        "date_min": "2024-07-02",
+        "date_max": "2025-09-08"
+      }
+    },
+    "cohort_sha256": "5db1818a418ff8da10021bd59b452664429eb06a367b8c3f926ffe25224e6b46",
+    "positive_class": "phishing",
+    "seed": 20261103,
+    "final_test_opened": false
+  },
+  "frozen": {
+    "frozen_at": "2026-11-03T13:56:09.337630+00:00",
+    "selected": [
+      {
+        "version": "Fresh baseline",
+        "identifier": "random_forest_baseline",
+        "family": "random_forest",
+        "policy": "balanced",
+        "threshold": 0.5099493722410541,
+        "artifact_sha256": "552e761c81e78a197854ada30ec9de9623d0e1248c8e4bbdf4276d2153f7e262"
+      },
+      {
+        "version": "Fresh baseline",
+        "identifier": "random_forest_baseline",
+        "family": "random_forest",
+        "policy": "conservative",
+        "threshold": 0.9861893941173956,
+        "artifact_sha256": "552e761c81e78a197854ada30ec9de9623d0e1248c8e4bbdf4276d2153f7e262"
+      },
+      {
+        "version": "Retrained",
+        "identifier": "random_forest_domain",
+        "family": "random_forest",
+        "policy": "balanced",
+        "threshold": 0.4682708394892286,
+        "artifact_sha256": "4ca1326617aa94001ede4a6b40fb261065ebd91a4a584c12d7d7bca1746f058b"
+      },
+      {
+        "version": "Retrained",
+        "identifier": "random_forest_domain",
+        "family": "random_forest",
+        "policy": "conservative",
+        "threshold": 0.9666793968211742,
+        "artifact_sha256": "4ca1326617aa94001ede4a6b40fb261065ebd91a4a584c12d7d7bca1746f058b"
+      },
+      {
+        "version": "Fresh baseline",
+        "identifier": "xgboost_baseline",
+        "family": "xgboost",
+        "policy": "balanced",
+        "threshold": 0.4387618005075162,
+        "artifact_sha256": "594bf870037535226f7122daebea3c4872b76ec2749c5d4fa665953726967f8c"
+      },
+      {
+        "version": "Fresh baseline",
+        "identifier": "xgboost_baseline",
+        "family": "xgboost",
+        "policy": "conservative",
+        "threshold": 0.983406707223142,
+        "artifact_sha256": "594bf870037535226f7122daebea3c4872b76ec2749c5d4fa665953726967f8c"
+      },
+      {
+        "version": "Retrained",
+        "identifier": "xgboost_domain",
+        "family": "xgboost",
+        "policy": "balanced",
+        "threshold": 0.5800396476112477,
+        "artifact_sha256": "3fb0b62f6eea4fb016a74d1ec5c381a8ab0e9232d3df27f43386cf68960ee267"
+      },
+      {
+        "version": "Retrained",
+        "identifier": "xgboost_domain",
+        "family": "xgboost",
+        "policy": "conservative",
+        "threshold": 0.9896107789295235,
+        "artifact_sha256": "3fb0b62f6eea4fb016a74d1ec5c381a8ab0e9232d3df27f43386cf68960ee267"
+      },
+      {
+        "version": "Fresh baseline",
+        "identifier": "lightgbm_baseline",
+        "family": "lightgbm",
+        "policy": "balanced",
+        "threshold": 0.5102122592508544,
+        "artifact_sha256": "2c70c93c05bb68c7354ce6edf5a4d34ade3b4a212250fdbf2d436f02353202ee"
+      },
+      {
+        "version": "Fresh baseline",
+        "identifier": "lightgbm_baseline",
+        "family": "lightgbm",
+        "policy": "conservative",
+        "threshold": 0.9667747529117799,
+        "artifact_sha256": "2c70c93c05bb68c7354ce6edf5a4d34ade3b4a212250fdbf2d436f02353202ee"
+      },
+      {
+        "version": "Retrained",
+        "identifier": "lightgbm_rich",
+        "family": "lightgbm",
+        "policy": "balanced",
+        "threshold": 0.7125167733871266,
+        "artifact_sha256": "196b748825b686e9459d5495c78303d216a71357d25969ade85fd3956422a8ba"
+      },
+      {
+        "version": "Retrained",
+        "identifier": "lightgbm_rich",
+        "family": "lightgbm",
+        "policy": "conservative",
+        "threshold": 0.943092524288964,
+        "artifact_sha256": "196b748825b686e9459d5495c78303d216a71357d25969ade85fd3956422a8ba"
+      }
+    ],
+    "candidate_count": 12,
+    "final_test_previously_opened": false,
+    "feature_hashes": {
+      "rich_features.joblib": "d0ae1bd38f3eb21ead1860f810b6f72fdaeead6537784b3a0b4be2f1ac6d882a",
+      "latent_features.joblib": "daa41d2fcd270153eb51e85002290eca3d2a4c6e45d150ec3a82876c47bdd35e"
+    },
+    "inference_code_hashes": {
+      "detector.py": "65a4caea665e2d9ed380e19dd0fada839f32bf9c9874c9547c265986baf7305e",
+      "lexical_features.py": "181a4b50dcf571aeb5b9561a3659dc79bda283243c13f80e90e8dc9ca0eb4001"
+    },
+    "balanced_policy": "Same weakest-of-four validation objective for fresh baselines and retrained models"
+  },
+  "models": [
+    {
+      "version": "Fresh baseline",
+      "identifier": "random_forest_baseline",
+      "family": "random_forest",
+      "policy": "balanced",
+      "threshold": 0.5099493722410541,
+      "artifact_sha256": "552e761c81e78a197854ada30ec9de9623d0e1248c8e4bbdf4276d2153f7e262",
+      "model_name": "Random Forest",
+      "test_rows": 84212,
+      "accuracy": 0.796751056856505,
+      "precision": 0.9048122016139254,
+      "recall": 0.7725551026297752,
+      "f1": 0.8334695466043978,
+      "false_positive_rate": 0.15662148070907195,
+      "missed_phishing_rate": 0.22744489737022475,
+      "confusion_matrix": [
+        [
+          24264,
+          4506
+        ],
+        [
+          12610,
+          42832
+        ]
+      ],
+      "roc_auc": 0.9033149035042644,
+      "pr_auc": 0.946440839339535,
+      "confidence_95": {
+        "accuracy": [
+          0.7884395371836507,
+          0.8041303816620069
+        ],
+        "precision": [
+          0.8998430032374191,
+          0.9094865715229477
+        ],
+        "recall": [
+          0.7602652161094406,
+          0.7840001051939294
+        ],
+        "f1": [
+          0.8250843120571189,
+          0.8415527093924909
+        ],
+        "false_positive_rate": [
+          0.15243463486081982,
+          0.16071688023702055
+        ]
+      },
+      "projected_precision_at_1pct": 0.04745983692723216,
+      "all_four_at_least_90": false,
+      "fpr_under_1pct": false,
+      "release_ci_fpr_under_1pct": false
+    },
+    {
+      "version": "Fresh baseline",
+      "identifier": "random_forest_baseline",
+      "family": "random_forest",
+      "policy": "conservative",
+      "threshold": 0.9861893941173956,
+      "artifact_sha256": "552e761c81e78a197854ada30ec9de9623d0e1248c8e4bbdf4276d2153f7e262",
+      "model_name": "Random Forest",
+      "test_rows": 84212,
+      "accuracy": 0.632950173371966,
+      "precision": 0.9820782895771105,
+      "recall": 0.45070524151365393,
+      "f1": 0.6178572311648493,
+      "false_positive_rate": 0.015849843587069864,
+      "missed_phishing_rate": 0.5492947584863461,
+      "confusion_matrix": [
+        [
+          28314,
+          456
+        ],
+        [
+          30454,
+          24988
+        ]
+      ],
+      "roc_auc": 0.9033149035042644,
+      "pr_auc": 0.946440839339535,
+      "confidence_95": {
+        "accuracy": [
+          0.6225313520812625,
+          0.6434272396849596
+        ],
+        "precision": [
+          0.9797872008810602,
+          0.9839732247584877
+        ],
+        "recall": [
+          0.43306457296722756,
+          0.46854224682517304
+        ],
+        "f1": [
+          0.6007469759449577,
+          0.6344757764235389
+        ],
+        "false_positive_rate": [
+          0.01442265810932879,
+          0.017460281332250544
+        ]
+      },
+      "projected_precision_at_1pct": 0.22313910795816594,
+      "all_four_at_least_90": false,
+      "fpr_under_1pct": false,
+      "release_ci_fpr_under_1pct": false
+    },
+    {
+      "version": "Retrained",
+      "identifier": "random_forest_domain",
+      "family": "random_forest",
+      "policy": "balanced",
+      "threshold": 0.4682708394892286,
+      "artifact_sha256": "4ca1326617aa94001ede4a6b40fb261065ebd91a4a584c12d7d7bca1746f058b",
+      "model_name": "Random Forest",
+      "test_rows": 84212,
+      "accuracy": 0.9037073101220728,
+      "precision": 0.9485604897556907,
+      "recall": 0.9026911006096461,
+      "f1": 0.9250575307523821,
+      "false_positive_rate": 0.0943343760862009,
+      "missed_phishing_rate": 0.09730889939035388,
+      "confusion_matrix": [
+        [
+          26056,
+          2714
+        ],
+        [
+          5395,
+          50047
+        ]
+      ],
+      "roc_auc": 0.9653866998409608,
+      "pr_auc": 0.9818024538434492,
+      "confidence_95": {
+        "accuracy": [
+          0.8989754821804089,
+          0.9083993875393378
+        ],
+        "precision": [
+          0.9456691293568766,
+          0.9511625001714505
+        ],
+        "recall": [
+          0.8954150873446105,
+          0.9095329091591494
+        ],
+        "f1": [
+          0.9205659004257069,
+          0.9292981947074943
+        ],
+        "false_positive_rate": [
+          0.09086457273260455,
+          0.0976580370833798
+        ]
+      },
+      "projected_precision_at_1pct": 0.08813798356489563,
+      "all_four_at_least_90": true,
+      "fpr_under_1pct": false,
+      "release_ci_fpr_under_1pct": false
+    },
+    {
+      "version": "Retrained",
+      "identifier": "random_forest_domain",
+      "family": "random_forest",
+      "policy": "conservative",
+      "threshold": 0.9666793968211742,
+      "artifact_sha256": "4ca1326617aa94001ede4a6b40fb261065ebd91a4a584c12d7d7bca1746f058b",
+      "model_name": "Random Forest",
+      "test_rows": 84212,
+      "accuracy": 0.8007053626561536,
+      "precision": 0.98509298065099,
+      "recall": 0.7080011543595108,
+      "f1": 0.8238726400738805,
+      "false_positive_rate": 0.02064650677789364,
+      "missed_phishing_rate": 0.29199884564048917,
+      "confusion_matrix": [
+        [
+          28176,
+          594
+        ],
+        [
+          16189,
+          39253
+        ]
+      ],
+      "roc_auc": 0.9653866998409608,
+      "pr_auc": 0.9818024538434492,
+      "confidence_95": {
+        "accuracy": [
+          0.792145686371008,
+          0.8087704287172728
+        ],
+        "precision": [
+          0.9836111946754039,
+          0.9864695076410966
+        ],
+        "recall": [
+          0.6938034708169253,
+          0.7214487847705181
+        ],
+        "f1": [
+          0.813732131705731,
+          0.8330851502665305
+        ],
+        "false_positive_rate": [
+          0.01896211952796042,
+          0.022407496690891
+        ]
+      },
+      "projected_precision_at_1pct": 0.25726736348668566,
+      "all_four_at_least_90": false,
+      "fpr_under_1pct": false,
+      "release_ci_fpr_under_1pct": false
+    },
+    {
+      "version": "Fresh baseline",
+      "identifier": "xgboost_baseline",
+      "family": "xgboost",
+      "policy": "balanced",
+      "threshold": 0.4387618005075162,
+      "artifact_sha256": "594bf870037535226f7122daebea3c4872b76ec2749c5d4fa665953726967f8c",
+      "model_name": "XGBoost",
+      "test_rows": 84212,
+      "accuracy": 0.7932361183679285,
+      "precision": 0.9141979611396707,
+      "recall": 0.75698928610079,
+      "f1": 0.8281993093241243,
+      "false_positive_rate": 0.13691345151199166,
+      "missed_phishing_rate": 0.24301071389920997,
+      "confusion_matrix": [
+        [
+          24831,
+          3939
+        ],
+        [
+          13473,
+          41969
+        ]
+      ],
+      "roc_auc": 0.9070721945646474,
+      "pr_auc": 0.9510079487423563,
+      "confidence_95": {
+        "accuracy": [
+          0.7848874712107908,
+          0.8006372282154345
+        ],
+        "precision": [
+          0.9095440138926252,
+          0.9186916618590263
+        ],
+        "recall": [
+          0.7441715172161696,
+          0.7687355996387097
+        ],
+        "f1": [
+          0.8192825548307883,
+          0.8363105602451714
+        ],
+        "false_positive_rate": [
+          0.13303754151095787,
+          0.14083919812017154
+        ]
+      },
+      "projected_precision_at_1pct": 0.05289406878971154,
+      "all_four_at_least_90": false,
+      "fpr_under_1pct": false,
+      "release_ci_fpr_under_1pct": false
+    },
+    {
+      "version": "Fresh baseline",
+      "identifier": "xgboost_baseline",
+      "family": "xgboost",
+      "policy": "conservative",
+      "threshold": 0.983406707223142,
+      "artifact_sha256": "594bf870037535226f7122daebea3c4872b76ec2749c5d4fa665953726967f8c",
+      "model_name": "XGBoost",
+      "test_rows": 84212,
+      "accuracy": 0.6582553555312782,
+      "precision": 0.9898945356998493,
+      "recall": 0.48587713285956496,
+      "f1": 0.6518177968664932,
+      "false_positive_rate": 0.009558567952728537,
+      "missed_phishing_rate": 0.5141228671404351,
+      "confusion_matrix": [
+        [
+          28495,
+          275
+        ],
+        [
+          28504,
+          26938
+        ]
+      ],
+      "roc_auc": 0.9070721945646474,
+      "pr_auc": 0.9510079487423563,
+      "confidence_95": {
+        "accuracy": [
+          0.6487481146505593,
+          0.6677018448104374
+        ],
+        "precision": [
+          0.9884533098610171,
+          0.9912190760435704
+        ],
+        "recall": [
+          0.4690351864037458,
+          0.5023966840379002
+        ],
+        "f1": [
+          0.6365213870468961,
+          0.6665550313767156
+        ],
+        "false_positive_rate": [
+          0.008407384832731495,
+          0.010726532851455372
+        ]
+      },
+      "projected_precision_at_1pct": 0.33925812883598533,
+      "all_four_at_least_90": false,
+      "fpr_under_1pct": true,
+      "release_ci_fpr_under_1pct": false
+    },
+    {
+      "version": "Retrained",
+      "identifier": "xgboost_domain",
+      "family": "xgboost",
+      "policy": "balanced",
+      "threshold": 0.5800396476112477,
+      "artifact_sha256": "3fb0b62f6eea4fb016a74d1ec5c381a8ab0e9232d3df27f43386cf68960ee267",
+      "model_name": "XGBoost",
+      "test_rows": 84212,
+      "accuracy": 0.9246069443784733,
+      "precision": 0.9590962649858792,
+      "recall": 0.924930558060676,
+      "f1": 0.9417036241265644,
+      "false_positive_rate": 0.07601668404588112,
+      "missed_phishing_rate": 0.07506944193932398,
+      "confusion_matrix": [
+        [
+          26583,
+          2187
+        ],
+        [
+          4162,
+          51280
+        ]
+      ],
+      "roc_auc": 0.9788302482140023,
+      "pr_auc": 0.9892232954232274,
+      "confidence_95": {
+        "accuracy": [
+          0.9202455406903788,
+          0.9286490146401157
+        ],
+        "precision": [
+          0.9568040852592088,
+          0.96134961966355
+        ],
+        "recall": [
+          0.9184362865079845,
+          0.931010452670163
+        ],
+        "f1": [
+          0.9378075292737034,
+          0.9453547891170538
+        ],
+        "false_positive_rate": [
+          0.07275012390016293,
+          0.07927379044008395
+        ]
+      },
+      "projected_precision_at_1pct": 0.10945169546513074,
+      "all_four_at_least_90": true,
+      "fpr_under_1pct": false,
+      "release_ci_fpr_under_1pct": false
+    },
+    {
+      "version": "Retrained",
+      "identifier": "xgboost_domain",
+      "family": "xgboost",
+      "policy": "conservative",
+      "threshold": 0.9896107789295235,
+      "artifact_sha256": "3fb0b62f6eea4fb016a74d1ec5c381a8ab0e9232d3df27f43386cf68960ee267",
+      "model_name": "XGBoost",
+      "test_rows": 84212,
+      "accuracy": 0.890775661425925,
+      "precision": 0.987661872020922,
+      "recall": 0.8446484614552144,
+      "f1": 0.9105740063778487,
+      "false_positive_rate": 0.020333680917622523,
+      "missed_phishing_rate": 0.15535153854478553,
+      "confusion_matrix": [
+        [
+          28185,
+          585
+        ],
+        [
+          8613,
+          46829
+        ]
+      ],
+      "roc_auc": 0.9788302482140023,
+      "pr_auc": 0.9892232954232274,
+      "confidence_95": {
+        "accuracy": [
+          0.8850728872548703,
+          0.895992777308362
+        ],
+        "precision": [
+          0.9863487848831449,
+          0.9887537917958533
+        ],
+        "recall": [
+          0.8353626822738471,
+          0.8531138294505676
+        ],
+        "f1": [
+          0.9050827820146785,
+          0.9156226534957984
+        ],
+        "false_positive_rate": [
+          0.01851046827044213,
+          0.0222108457841069
+        ]
+      },
+      "projected_precision_at_1pct": 0.2955710970040027,
+      "all_four_at_least_90": false,
+      "fpr_under_1pct": false,
+      "release_ci_fpr_under_1pct": false
+    },
+    {
+      "version": "Fresh baseline",
+      "identifier": "lightgbm_baseline",
+      "family": "lightgbm",
+      "policy": "balanced",
+      "threshold": 0.5102122592508544,
+      "artifact_sha256": "2c70c93c05bb68c7354ce6edf5a4d34ade3b4a212250fdbf2d436f02353202ee",
+      "model_name": "LightGBM",
+      "test_rows": 84212,
+      "accuracy": 0.8046596684558021,
+      "precision": 0.9155157715260017,
+      "recall": 0.7747916741820281,
+      "f1": 0.8392958324378187,
+      "false_positive_rate": 0.13778241223496698,
+      "missed_phishing_rate": 0.22520832581797193,
+      "confusion_matrix": [
+        [
+          24806,
+          3964
+        ],
+        [
+          12486,
+          42956
+        ]
+      ],
+      "roc_auc": 0.912743708515597,
+      "pr_auc": 0.9540126567181444,
+      "confidence_95": {
+        "accuracy": [
+          0.7964905496535346,
+          0.8120978642356399
+        ],
+        "precision": [
+          0.9108117395672037,
+          0.9198913272292352
+        ],
+        "recall": [
+          0.7625309327573389,
+          0.7863807958993562
+        ],
+        "f1": [
+          0.8307272929088025,
+          0.8471295695535583
+        ],
+        "false_positive_rate": [
+          0.13351922888505866,
+          0.14211699259917776
+        ]
+      },
+      "projected_precision_at_1pct": 0.05374805487871318,
+      "all_four_at_least_90": false,
+      "fpr_under_1pct": false,
+      "release_ci_fpr_under_1pct": false
+    },
+    {
+      "version": "Fresh baseline",
+      "identifier": "lightgbm_baseline",
+      "family": "lightgbm",
+      "policy": "conservative",
+      "threshold": 0.9667747529117799,
+      "artifact_sha256": "2c70c93c05bb68c7354ce6edf5a4d34ade3b4a212250fdbf2d436f02353202ee",
+      "model_name": "LightGBM",
+      "test_rows": 84212,
+      "accuracy": 0.679784353773809,
+      "precision": 0.9875025679654865,
+      "recall": 0.5202012914397027,
+      "f1": 0.6814337019185333,
+      "false_positive_rate": 0.012686826555439694,
+      "missed_phishing_rate": 0.47979870856029727,
+      "confusion_matrix": [
+        [
+          28405,
+          365
+        ],
+        [
+          26601,
+          28841
+        ]
+      ],
+      "roc_auc": 0.912743708515597,
+      "pr_auc": 0.9540126567181444,
+      "confidence_95": {
+        "accuracy": [
+          0.6702970997469432,
+          0.6891971605295567
+        ],
+        "precision": [
+          0.9859035560200322,
+          0.9889152103455943
+        ],
+        "recall": [
+          0.5033554846176398,
+          0.5365548086810709
+        ],
+        "f1": [
+          0.6665924999190495,
+          0.6955762797827763
+        ],
+        "false_positive_rate": [
+          0.011433229004629196,
+          0.01406565472222645
+        ]
+      },
+      "projected_precision_at_1pct": 0.292873626162779,
+      "all_four_at_least_90": false,
+      "fpr_under_1pct": false,
+      "release_ci_fpr_under_1pct": false
+    },
+    {
+      "version": "Retrained",
+      "identifier": "lightgbm_rich",
+      "family": "lightgbm",
+      "policy": "balanced",
+      "threshold": 0.7125167733871266,
+      "artifact_sha256": "196b748825b686e9459d5495c78303d216a71357d25969ade85fd3956422a8ba",
+      "model_name": "LightGBM",
+      "test_rows": 84212,
+      "accuracy": 0.9228257255498029,
+      "precision": 0.9588090818756211,
+      "recall": 0.9224053966307132,
+      "f1": 0.9402550124564484,
+      "false_positive_rate": 0.07636426833507126,
+      "missed_phishing_rate": 0.07759460336928682,
+      "confusion_matrix": [
+        [
+          26573,
+          2197
+        ],
+        [
+          4302,
+          51140
+        ]
+      ],
+      "roc_auc": 0.9788314644643555,
+      "pr_auc": 0.9894151779301406,
+      "confidence_95": {
+        "accuracy": [
+          0.9185823729205005,
+          0.9269840289213178
+        ],
+        "precision": [
+          0.956432748380707,
+          0.9610840683614579
+        ],
+        "recall": [
+          0.9159947971967047,
+          0.9284997497349964
+        ],
+        "f1": [
+          0.9363743362788933,
+          0.943996610352424
+        ],
+        "false_positive_rate": [
+          0.07312086969050303,
+          0.0794207983427008
+        ]
+      },
+      "projected_precision_at_1pct": 0.10874257359820028,
+      "all_four_at_least_90": true,
+      "fpr_under_1pct": false,
+      "release_ci_fpr_under_1pct": false
+    },
+    {
+      "version": "Retrained",
+      "identifier": "lightgbm_rich",
+      "family": "lightgbm",
+      "policy": "conservative",
+      "threshold": 0.943092524288964,
+      "artifact_sha256": "196b748825b686e9459d5495c78303d216a71357d25969ade85fd3956422a8ba",
+      "model_name": "LightGBM",
+      "test_rows": 84212,
+      "accuracy": 0.8983992780126347,
+      "precision": 0.9877252111679774,
+      "recall": 0.8563183146351142,
+      "f1": 0.917339722533524,
+      "false_positive_rate": 0.020507473062217587,
+      "missed_phishing_rate": 0.14368168536488582,
+      "confusion_matrix": [
+        [
+          28180,
+          590
+        ],
+        [
+          7966,
+          47476
+        ]
+      ],
+      "roc_auc": 0.9788314644643555,
+      "pr_auc": 0.9894151779301406,
+      "confidence_95": {
+        "accuracy": [
+          0.892657430597761,
+          0.9035064422869186
+        ],
+        "precision": [
+          0.986479020830279,
+          0.9888229584079419
+        ],
+        "recall": [
+          0.8469663817502517,
+          0.8647205288145724
+        ],
+        "f1": [
+          0.9117719837605543,
+          0.9221165445049411
+        ],
+        "false_positive_rate": [
+          0.018778143466088644,
+          0.022282338835841083
+        ]
+      },
+      "projected_precision_at_1pct": 0.2966572197027611,
+      "all_four_at_least_90": false,
+      "fpr_under_1pct": false,
+      "release_ci_fpr_under_1pct": false
+    }
+  ],
+  "bootstrap_resamples": 1000,
+  "status": "Research only; production artifacts unchanged"
+}
