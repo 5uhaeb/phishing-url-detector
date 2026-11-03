@@ -1,5 +1,14 @@
 # Verified deployment — 1 November 2026
 
+**Latest runtime update, 3 November:** the memory-bounded feed importer is live
+at commit `911e4140ce8b07e7bc1123fd591298576212ab57`, deployment
+`dep-dbkmq0qjnfac739d5j90`. A complete refresh published 788,119 indicators;
+sampled Render memory peaked at 257.41 MiB and settled to 177.66 MiB during
+verification. All 50 backend tests and 7 production browser tests passed.
+The model and free service plan are unchanged. See the
+[memory incident report](MEMORY_INCIDENT_2026-11-03.md).
+The deployment details below preserve the original 1 November release record.
+
 - Render service: `linkguard-api` (`srv-dbcgqd0m7kps739opq2g`). This is the only
   Render service connected to the LinkGuard repository; unrelated services were untouched.
 - Deployment: `dep-dbjkle0u01pc73foor0g`, status **live**.
@@ -22,8 +31,9 @@ accessibility, result download, error recovery and untrusted text rendering.
 These are full-dataset local batch scores using the verified matching artifact
 and deployed full-precision ML/rules decision. They are not 48,803 HTTP calls.
 Review outcomes count as non-positive. Feed/reputation lookups are excluded from
-benchmarking; the live service currently reports missing public-feed snapshots
-and no configured external reputation. No threat-intelligence accuracy is claimed.
+benchmarking; at the 1 November measurement the service reported missing feed
+snapshots and no configured external reputation. The 3 November fix has since
+restored fresh feed snapshots. No threat-intelligence accuracy is claimed.
 
 | Kaggle cohort | URLs | Accuracy | Precision | Malicious recall | F1 | FPR |
 |---|---:|---:|---:|---:|---:|---:|

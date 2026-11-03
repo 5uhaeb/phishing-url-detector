@@ -179,6 +179,9 @@ tune a new candidate while retaining an independent-test claim.
 
 The Render API patch was redeployed and verified on 1 November 2026; the original
 XGBoost model remains active. See [deployment status and final scores](docs/DEPLOYMENT_STATUS.md).
+The 3 November memory fix is also live: a complete 788,119-indicator refresh
+completed without a restart, with sampled usage peaking at 257.41 MiB during
+verification. The existing free service plan was retained.
 
 Vercel project root: `frontend`; build: `node build.mjs`; output: `dist`.
 Render service root: `backend`; build: `pip install -r requirements.txt`; start: `python main.py`.

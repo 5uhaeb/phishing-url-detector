@@ -47,7 +47,27 @@ duplicate/chunk/BOM handling, oversized lines/bodies, invalid UTF-8, interrupted
 downloads, and rollback after a database replacement failure. ML score changes
 are not claimed: this is an ingestion/resource fix, not retraining.
 
+## Production verification
+
 Automatic refresh was temporarily paused and the existing build redeployed to
-stabilize service while preparing this fix. The final release must restore
-`REFRESH_FEEDS=1` and verify one complete production refresh and memory metrics;
-the verification outcome is recorded below after deployment.
+stabilize service while preparing this fix. With refresh paused, Render memory
+remained about 157.6 MiB rather than climbing toward the memory limit.
+
+The final fix was deployed as commit `911e4140ce8b07e7bc1123fd591298576212ab57`,
+Render deployment `dep-dbkmq0qjnfac739d5j90` (live at 10:44 IST on 3 November).
+`REFRESH_FEEDS=1` was restored. The complete live feed refresh finished at
+10:51 IST in 447.2 seconds and published **788,119 distinct indicators**. The API
+reports the feed as **fresh**. The monitored instance did not restart during
+the import or the subsequent prediction checks.
+
+At 30-second metric resolution, the observed peak during this verification was
+**257.41 MiB**; post-refresh usage was **177.66 MiB** at 10:52 IST. These are
+sampled production values, not a guarantee of the instantaneous or future peak.
+The original incident samples reached roughly 510 MiB before restarting.
+
+All **7 production browser tests passed during ingestion**, including mobile
+layouts and accessibility. After completion, direct Render and Vercel-proxied
+predictions returned HTTP 200; their internal analysis times were 18.09 ms and
+8.08 ms for the benign smoke-test URL. These two requests are smoke checks, not
+a latency benchmark. The same XGBoost version remains active; no paid plan
+upgrade was made. The source retains its full indicator coverage.
