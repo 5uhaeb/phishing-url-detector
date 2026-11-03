@@ -36,6 +36,9 @@ The main comparison uses **the same 48,406 test URLs from 33,285 domains absent
 from both training corpora**: 16,117 phishing and 32,289 legitimate URLs. Original
 models were re-scored with their frozen policies; improved configurations and
 thresholds were chosen on validation before final evaluation.
+Benchmark decisions use the frozen model/rule policy; review outcomes count as
+non-positive. Threat-feed/reputation overrides are excluded to avoid circular
+evaluation against feed-derived phishing labels.
 
 | Model | Original phishing recall | Improved research recall | Original FPR | Improved FPR |
 |---|---:|---:|---:|---:|

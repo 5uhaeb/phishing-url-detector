@@ -71,6 +71,7 @@ def prepare(evidence, historical):
             model_id=record['model'],policy=record['policy'],status='Historical within-source benchmark; not deployed',
             positive_class='publisher malicious label',test_rows=int(record['rows']),domains=71527,
             threshold=record['threshold'],cohort_sha256='Archived same-split domain-disjoint ealvaradob-only test',
+            model_weight=1.0,
             **{k:record[k] for k in ['accuracy','precision','recall','f1','false_positive_rate']},
             confusion_matrix=[[int(record['tn']),int(record['fp'])],[int(record['fn']),int(record['tp'])]]))
     output=[]
@@ -79,13 +80,19 @@ def prepare(evidence, historical):
         row.update(tn=int(tn),fp=int(fp),fn=int(fn),tp=int(tp),
             evaluation_date='2026-11-03' if row['benchmark']=='independent_phishing' and row['version']=='Original' else '2026-11-01',
             score_origin='Frozen measured results; no UCI-only test cohort',
-            training_change='Data, features and model policy changed together; not a causal single-factor ablation')
+            training_change=('Same single-source trained model; validation-selected threshold policies only'
+                             if row['benchmark']=='ealvaradob_only' else
+                             'Data, features and model policy changed together; not a causal single-factor ablation'))
         for key in ['accuracy','precision','recall','f1','false_positive_rate']:
             row[key+'_pct']=100*row.pop(key)
         row.pop('missed_phishing_rate',None)
         output.append(row)
     REPORTS.mkdir(exist_ok=True)
-    pd.DataFrame(output).to_csv(REPORTS/'model_scores.csv',index=False)
+    prepared=pd.DataFrame(output)
+    front=['benchmark','model','version','positive_class','test_rows','accuracy_pct','precision_pct',
+           'recall_pct','f1_pct','false_positive_rate_pct','status','policy']
+    prepared=prepared[front+[name for name in prepared.columns if name not in front]]
+    prepared.to_csv(REPORTS/'model_scores.csv',index=False)
     print(pd.DataFrame(output)[['benchmark','model','version','accuracy_pct','recall_pct','f1_pct','false_positive_rate_pct']].round(2).to_string(index=False),flush=True)
 
 
