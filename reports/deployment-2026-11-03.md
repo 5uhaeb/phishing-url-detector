@@ -25,4 +25,3 @@
 - Render memory samples through 20:39 IST peaked at 206.15 MiB on the same new instance; no startup restart was observed. This is a sampled peak, not a guarantee against future memory spikes.
 - After refresh, the profile still has no feed match and is classified High by the model alone (63.4 versus threshold 58.0). The known false positive remains unresolved.
 - Frontend assets and API URL are unchanged; the existing Vercel frontend automatically uses the updated Render backend.
-
